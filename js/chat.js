@@ -14,32 +14,34 @@ import {
   updateDoc,
   setDoc,
   serverTimestamp,
-  writeBatch,
   increment,
-  deleteField
+  arrayUnion,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 
 
 /* =====================================
-   ZORAP CHAT ENGINE
+   ZORAP UNIFIED CHAT ENGINE
 ===================================== */
 
 const $ = selector => document.querySelector(selector);
 
-let activeConversation = null;
-let activeChatListener = null;
-let activeMessageListener = null;
-let activeTypingListener = null;
-
 let currentUser = null;
 let currentProfile = null;
+
+let activeConversation = null;
 let conversations = [];
 
+let conversationListener = null;
+let messageListener = null;
+let typingListener = null;
+
 let sending = false;
+let typingTimer = null;
 
 
 /* =====================================
-   APP READY
+   INITIALIZATION
 ===================================== */
 
 window.addEventListener("zorap:ready", event => {
@@ -50,18 +52,18 @@ window.addEventListener("zorap:ready", event => {
 });
 
 
-/* =====================================
-   HELPERS
-===================================== */
+function notify(message) {
+  window.zorapToast?.(message);
+}
 
 function escapeText(value = "") {
-  return String(value).replace(/[&<>"']/g, character => ({
+  return String(value).replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#039;"
-  })[character]);
+  })[char]);
 }
 
 function formatTime(timestamp) {
@@ -73,51 +75,94 @@ function formatTime(timestamp) {
   });
 }
 
-function getOtherParticipant(data) {
-  return data.participants?.find(uid => uid !== currentUser.uid);
-}
-
-function getConversationId(uid1, uid2) {
-  return [uid1, uid2].sort().join("_");
-}
-
-function notify(message) {
-  window.zorapToast?.(message);
+function isGroup() {
+  return activeConversation?.type === "group";
 }
 
 
 /* =====================================
-   CREATE / OPEN CONVERSATION
+   LOAD CONVERSATIONS
 ===================================== */
 
-async function openConversation(targetUser) {
+function loadConversations() {
+  if (!currentUser) return;
+
+  conversationListener?.();
+
+  const q = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", currentUser.uid)
+  );
+
+  conversationListener = onSnapshot(q, snapshot => {
+    conversations = snapshot.docs
+      .map(item => ({
+        id: item.id,
+        ...item.data()
+      }))
+      .filter(item => item.hiddenFor?.[currentUser.uid] !== true);
+
+    conversations.sort((a, b) => {
+      const first = a.lastMessageAt?.toMillis?.() || 0;
+      const second = b.lastMessageAt?.toMillis?.() || 0;
+      return second - first;
+    });
+
+    renderConversationList();
+  }, error => {
+    console.error("Conversation list:", error);
+    notify("Gagal memuat percakapan.");
+  });
+}
+
+
+/* =====================================
+   GET USER PROFILE
+===================================== */
+
+async function getUserProfile(uid) {
+  const snapshot = await getDoc(doc(db, "users", uid));
+
+  if (!snapshot.exists()) {
+    return {
+      name: "Pengguna",
+      username: "",
+      photoURL: "",
+      verified: false
+    };
+  }
+
+  return snapshot.data();
+}
+
+
+/* =====================================
+   OPEN PRIVATE CHAT
+===================================== */
+
+async function openPrivateChat(targetUser) {
   if (!currentUser || !targetUser?.uid) return;
 
   if (targetUser.uid === currentUser.uid) {
-    notify("Kamu tidak bisa mengirim pesan ke akun sendiri.");
+    notify("Tidak bisa membuka chat dengan diri sendiri.");
     return;
   }
 
-  const conversationId = getConversationId(
+  const id = [
     currentUser.uid,
     targetUser.uid
-  );
+  ].sort().join("_");
 
-  const conversationRef = doc(
-    db,
-    "conversations",
-    conversationId
-  );
+  const ref = doc(db, "conversations", id);
+  const snapshot = await getDoc(ref);
 
-  const existing = await getDoc(conversationRef);
-
-  if (!existing.exists()) {
-    await setDoc(conversationRef, {
+  if (!snapshot.exists()) {
+    await setDoc(ref, {
+      type: "private",
       participants: [
         currentUser.uid,
         targetUser.uid
       ],
-      type: "private",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       lastMessage: "",
@@ -129,123 +174,89 @@ async function openConversation(targetUser) {
     });
   }
 
-  const targetProfileRef = doc(db, "users", targetUser.uid);
-  const targetProfileSnap = await getDoc(targetProfileRef);
+  const profile = await getUserProfile(targetUser.uid);
 
-  const profile = targetProfileSnap.exists()
-    ? targetProfileSnap.data()
-    : targetUser;
-
-  activeConversation = {
-    id: conversationId,
+  openConversation({
+    id,
+    type: "private",
+    participants: [currentUser.uid, targetUser.uid],
     otherUid: targetUser.uid,
-    name: profile.name || profile.displayName || "Pengguna",
-    username: profile.username || "",
+    groupName: profile.name,
     photoURL: profile.photoURL || "",
     verified: profile.verified === true
-  };
+  });
+}
 
-  renderConversationHeader();
-  showConversationScreen();
+
+/* =====================================
+   OPEN GROUP
+===================================== */
+
+function openGroupConversation(group) {
+  if (!currentUser || !group?.id) return;
+
+  if (!group.participants?.includes(currentUser.uid)) {
+    notify("Kamu bukan anggota grup ini.");
+    return;
+  }
+
+  openConversation({
+    ...group,
+    type: "group",
+    groupName: group.groupName || "Grup ZORAP",
+    participants: group.participants || [],
+    admins: group.admins || []
+  });
+}
+
+
+/* =====================================
+   OPEN CONVERSATION
+===================================== */
+
+function openConversation(conversation) {
+  messageListener?.();
+  typingListener?.();
+
+  activeConversation = conversation;
+
+  renderHeader();
+  showChatScreen();
 
   listenMessages();
   listenTyping();
 
-  await markConversationRead(conversationId);
+  markConversationRead();
+
+  renderConversationList();
 
   window.dispatchEvent(
     new CustomEvent("zorap:conversationopen", {
-      detail: activeConversation
+      detail: conversation
     })
   );
 }
 
 
 /* =====================================
-   CONVERSATION HEADER
+   HEADER
 ===================================== */
 
-function renderConversationHeader() {
+function renderHeader() {
   const header = $("#conversationHeader");
   if (!header || !activeConversation) return;
 
-  const profile = activeConversation;
+  const group = isGroup();
 
-  const name = escapeText(profile.name);
+  header.replaceChildren();
 
-  header.innerHTML = `
-    <div class="conversation-user">
-      <button class="icon-button mobile-back"
-        id="conversationBackBtn"
-        aria-label="Kembali">
-        <svg viewBox="0 0 24 24">
-          <path d="m15 18-6-6 6-6"/>
-        </svg>
-      </button>
+  const left = document.createElement("div");
+  left.className = "conversation-user";
 
-      <div class="avatar" id="conversationAvatar"></div>
-
-      <div class="conversation-user-info">
-        <div class="name-line">
-          <h3>${name}</h3>
-
-          ${
-            profile.verified
-              ? `<span class="verified-badge" aria-label="Terverifikasi">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M12 1.8 15 3l3.2-.1 1.2 3 2.4 2-1 3.2.5 3.1-2.7 1.9-1.5 2.9-3.2-.4-2.9 1.3-2.5-2-3.2-.7-.5-3.2-2.1-2.4 1.2-3-1-3.1 2.6-1.9L7 3l3.2.3z"/>
-                    <path class="verified-check"
-                      d="m8 12 2.5 2.5L16 9"/>
-                  </svg>
-                </span>`
-              : ""
-          }
-        </div>
-
-        <span id="conversationStatus">
-          Menghubungkan...
-        </span>
-      </div>
-    </div>
-
-    <div class="conversation-actions">
-      <button class="icon-button" id="voiceCallBtn"
-        title="Panggilan suara">
-        <svg viewBox="0 0 24 24">
-          <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.5 3.1a2 2 0 0 1-.6 1.7L7.1 10.4a16 16 0 0 0 6.5 6.5l1.9-1.9a2 2 0 0 1 1.7-.6l3.1.5a2 2 0 0 1 1.7 2Z"/>
-        </svg>
-      </button>
-
-      <button class="icon-button" id="videoCallBtn"
-        title="Panggilan video">
-        <svg viewBox="0 0 24 24">
-          <rect x="3" y="6" width="13" height="12" rx="2"/>
-          <path d="m16 10 5-3v10l-5-3"/>
-        </svg>
-      </button>
-
-      <button class="icon-button" id="chatMoreBtn"
-        title="Menu percakapan">
-        <svg viewBox="0 0 24 24">
-          <circle cx="12" cy="5" r="1"/>
-          <circle cx="12" cy="12" r="1"/>
-          <circle cx="12" cy="19" r="1"/>
-        </svg>
-      </button>
-    </div>
-  `;
-
-  const avatar = $("#conversationAvatar");
-
-  if (avatar) {
-    if (profile.photoURL) {
-      avatar.innerHTML = `<img src="${escapeText(profile.photoURL)}" alt="">`;
-    } else {
-      avatar.textContent = profile.name.charAt(0).toUpperCase();
-    }
-  }
-
-  $("#conversationBackBtn")?.addEventListener("click", () => {
+  const back = document.createElement("button");
+  back.className = "icon-button mobile-back";
+  back.textContent = "‹";
+  back.addEventListener("click", () => {
     $("#chatView")?.classList.add("hidden");
     $("#welcomePanel")?.classList.remove("hidden");
 
@@ -253,23 +264,66 @@ function renderConversationHeader() {
       ?.classList.remove("mobile-chat-open");
   });
 
-  $("#chatMoreBtn")?.addEventListener("click", showChatMenu);
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
 
-  $("#voiceCallBtn")?.addEventListener("click", () => {
-    notify("Fitur panggilan akan dihubungkan pada modul panggilan.");
-  });
+  if (activeConversation.photoURL) {
+    const img = document.createElement("img");
+    img.src = activeConversation.photoURL;
+    img.alt = "";
+    avatar.appendChild(img);
+  } else {
+    avatar.textContent = (
+      activeConversation.groupName || "Z"
+    ).charAt(0).toUpperCase();
+  }
 
-  $("#videoCallBtn")?.addEventListener("click", () => {
-    notify("Fitur panggilan video akan dihubungkan pada modul panggilan.");
-  });
+  const info = document.createElement("div");
+  info.className = "conversation-user-info";
+
+  const title = document.createElement("div");
+  title.className = "name-line";
+
+  const name = document.createElement("h3");
+  name.textContent = activeConversation.groupName || "Percakapan";
+
+  title.appendChild(name);
+
+  if (!group && activeConversation.verified) {
+    const verified = document.createElement("span");
+    verified.className = "verified-badge";
+    verified.textContent = "✓";
+    title.appendChild(verified);
+  }
+
+  const status = document.createElement("span");
+  status.id = "conversationStatus";
+  status.textContent = group
+    ? `${activeConversation.participants.length} anggota`
+    : "ZORAP";
+
+  info.append(title, status);
+  left.append(back, avatar, info);
+
+  const actions = document.createElement("div");
+  actions.className = "conversation-actions";
+
+  const more = document.createElement("button");
+  more.className = "icon-button";
+  more.textContent = "⋮";
+  more.addEventListener("click", showConversationMenu);
+
+  actions.appendChild(more);
+
+  header.append(left, actions);
 }
 
 
 /* =====================================
-   SHOW CONVERSATION SCREEN
+   SHOW CHAT
 ===================================== */
 
-function showConversationScreen() {
+function showChatScreen() {
   $("#welcomePanel")?.classList.add("hidden");
   $("#chatView")?.classList.remove("hidden");
 
@@ -279,73 +333,7 @@ function showConversationScreen() {
 
 
 /* =====================================
-   LOAD CONVERSATIONS
-===================================== */
-
-function loadConversations() {
-  if (!currentUser) return;
-
-  if (activeChatListener) {
-    activeChatListener();
-  }
-
-  const conversationsRef = collection(db, "conversations");
-
-  const conversationQuery = query(
-    conversationsRef,
-    where("participants", "array-contains", currentUser.uid)
-  );
-
-  activeChatListener = onSnapshot(
-    conversationQuery,
-    async snapshot => {
-      conversations = [];
-
-      for (const item of snapshot.docs) {
-        const data = item.data();
-
-        const otherUid = getOtherParticipant(data);
-
-        if (!otherUid) continue;
-
-        const userSnap = await getDoc(doc(db, "users", otherUid));
-
-        const profile = userSnap.exists()
-          ? userSnap.data()
-          : { name: "Pengguna", username: "" };
-
-        conversations.push({
-          id: item.id,
-          otherUid,
-          name: profile.name || "Pengguna",
-          username: profile.username || "",
-          photoURL: profile.photoURL || "",
-          verified: profile.verified === true,
-          lastMessage: data.lastMessage || "",
-          lastMessageAt: data.lastMessageAt,
-          unreadCount: data.unreadCount?.[currentUser.uid] || 0
-        });
-      }
-
-      conversations.sort((a, b) => {
-        const timeA = a.lastMessageAt?.toMillis?.() || 0;
-        const timeB = b.lastMessageAt?.toMillis?.() || 0;
-
-        return timeB - timeA;
-      });
-
-      renderConversationList();
-    },
-    error => {
-      console.error("Conversation listener:", error);
-      notify("Gagal memuat daftar percakapan.");
-    }
-  );
-}
-
-
-/* =====================================
-   RENDER CONVERSATION LIST
+   LIST CONVERSATIONS
 ===================================== */
 
 function renderConversationList() {
@@ -356,23 +344,22 @@ function renderConversationList() {
 
   if (!conversations.length) {
     const empty = document.createElement("div");
-
     empty.className = "chat-empty";
     empty.innerHTML = `
       <div class="empty-icon">Z</div>
       <h3>Belum ada percakapan</h3>
-      <p>Cari username temanmu untuk memulai percakapan.</p>
+      <p>Mulai chat dengan temanmu.</p>
     `;
-
     list.appendChild(empty);
     return;
   }
 
   conversations.forEach(conversation => {
-    const item = document.createElement("button");
+    const group = conversation.type === "group";
 
-    item.type = "button";
+    const item = document.createElement("button");
     item.className = "chat-item";
+    item.type = "button";
 
     if (activeConversation?.id === conversation.id) {
       item.classList.add("active");
@@ -387,7 +374,9 @@ function renderConversationList() {
       img.alt = "";
       avatar.appendChild(img);
     } else {
-      avatar.textContent = conversation.name.charAt(0).toUpperCase();
+      avatar.textContent = (
+        group ? conversation.groupName : "Z"
+      )?.charAt(0)?.toUpperCase() || "Z";
     }
 
     const info = document.createElement("div");
@@ -397,13 +386,15 @@ function renderConversationList() {
     top.className = "chat-item-top";
 
     const name = document.createElement("strong");
-    name.textContent = conversation.name;
+    name.textContent = group
+      ? conversation.groupName || "Grup"
+      : conversation.groupName || "Pengguna";
 
-    if (conversation.verified) {
-      const badge = document.createElement("span");
-      badge.className = "verified-badge";
-      badge.textContent = "✓";
-      name.appendChild(badge);
+    if (!group && conversation.verified) {
+      const verified = document.createElement("span");
+      verified.className = "verified-badge";
+      verified.textContent = "✓";
+      name.appendChild(verified);
     }
 
     const time = document.createElement("span");
@@ -415,66 +406,74 @@ function renderConversationList() {
     const bottom = document.createElement("div");
     bottom.className = "chat-item-bottom";
 
-    const lastMessage = document.createElement("span");
-    lastMessage.className = "chat-last-message";
-    lastMessage.textContent = conversation.lastMessage || "Mulai percakapan";
+    const last = document.createElement("span");
+    last.className = "chat-last-message";
+    last.textContent = conversation.lastMessage || "Mulai percakapan";
 
-    bottom.appendChild(lastMessage);
+    bottom.appendChild(last);
 
-    if (conversation.unreadCount > 0) {
-      const unread = document.createElement("span");
-      unread.className = "unread-count";
-      unread.textContent = conversation.unreadCount > 99
-        ? "99+"
-        : conversation.unreadCount;
+    const unreadCount =
+      conversation.unreadCount?.[currentUser.uid] || 0;
 
-      bottom.appendChild(unread);
+    if (unreadCount > 0) {
+      const badge = document.createElement("span");
+      badge.className = "unread-count";
+      badge.textContent = unreadCount > 99 ? "99+" : unreadCount;
+      bottom.appendChild(badge);
     }
 
     info.append(top, bottom);
     item.append(avatar, info);
 
     item.addEventListener("click", () => {
-      openConversation(conversation);
+      if (group) {
+        openGroupConversation(conversation);
+      } else {
+        openPrivateChat({
+          uid: getOtherUid(conversation),
+          name: conversation.groupName
+        });
+      }
     });
 
     list.appendChild(item);
   });
 }
 
+function getOtherUid(conversation) {
+  return conversation.participants?.find(
+    uid => uid !== currentUser.uid
+  );
+}
+
 
 /* =====================================
-   MESSAGE LISTENER
+   LISTEN MESSAGES
 ===================================== */
 
 function listenMessages() {
   if (!activeConversation) return;
 
-  activeMessageListener?.();
+  messageListener?.();
 
-  const messagesRef = collection(
+  const ref = collection(
     db,
     "conversations",
     activeConversation.id,
     "messages"
   );
 
-  const messageQuery = query(
-    messagesRef,
+  const q = query(
+    ref,
     orderBy("createdAt", "asc")
   );
 
-  activeMessageListener = onSnapshot(
-    messageQuery,
-    snapshot => {
-      renderMessages(snapshot.docs);
-      markConversationRead(activeConversation.id);
-    },
-    error => {
-      console.error("Message listener:", error);
-      notify("Gagal memuat pesan.");
-    }
-  );
+  messageListener = onSnapshot(q, snapshot => {
+    renderMessages(snapshot.docs);
+  }, error => {
+    console.error("Messages:", error);
+    notify("Gagal memuat riwayat pesan.");
+  });
 }
 
 
@@ -482,17 +481,19 @@ function listenMessages() {
    RENDER MESSAGES
 ===================================== */
 
-function renderMessages(documents) {
+async function renderMessages(documents) {
   const history = $("#messageHistory");
   if (!history) return;
 
   history.replaceChildren();
 
-  documents.forEach(messageDoc => {
+  const group = isGroup();
+
+  for (const messageDoc of documents) {
     const message = messageDoc.data();
 
     if (message.hiddenFor?.includes(currentUser.uid)) {
-      return;
+      continue;
     }
 
     const sent = message.senderId === currentUser.uid;
@@ -503,41 +504,54 @@ function renderMessages(documents) {
     const bubble = document.createElement("div");
     bubble.className = "message-bubble";
 
+    if (group && !sent) {
+      const sender = document.createElement("div");
+      sender.className = "message-sender";
+
+      sender.textContent = message.senderName || "Anggota";
+      bubble.appendChild(sender);
+    }
+
     const text = document.createElement("div");
     text.className = "message-text";
-    text.textContent = message.text || "";
+
+    text.textContent = message.deletedForEveryone
+      ? "Pesan ini telah dihapus."
+      : message.text || "";
 
     const meta = document.createElement("div");
     meta.className = "message-meta";
 
     const time = document.createElement("span");
     time.textContent = formatTime(message.createdAt);
-
     meta.appendChild(time);
 
     if (sent) {
       const ticks = document.createElement("span");
       ticks.className = "message-ticks";
 
-      const readBy = message.readBy || [];
-      const deliveredTo = message.deliveredTo || [];
+      const recipients = activeConversation.participants
+        .filter(uid => uid !== currentUser.uid);
 
-      if (readBy.includes(activeConversation.otherUid)) {
+      const readBy = message.readBy || [];
+
+      if (
+        recipients.length &&
+        recipients.every(uid => readBy.includes(uid))
+      ) {
         ticks.classList.add("read");
         ticks.textContent = "✓✓";
-        ticks.title = "Dibaca";
-      } else if (deliveredTo.includes(activeConversation.otherUid)) {
+      } else if ((message.deliveredTo || []).length) {
         ticks.textContent = "✓✓";
-        ticks.title = "Diterima";
       } else {
         ticks.textContent = "✓";
-        ticks.title = "Terkirim";
       }
 
       meta.appendChild(ticks);
     }
 
-    bubble.append(text, meta);
+    bubble.append(meta);
+    bubble.prepend(text);
 
     bubble.addEventListener("contextmenu", event => {
       event.preventDefault();
@@ -546,9 +560,11 @@ function renderMessages(documents) {
 
     row.appendChild(bubble);
     history.appendChild(row);
-  });
+  }
 
   history.scrollTop = history.scrollHeight;
+
+  markConversationRead();
 }
 
 
@@ -557,7 +573,7 @@ function renderMessages(documents) {
 ===================================== */
 
 async function sendMessage() {
-  if (!activeConversation || !currentUser || sending) return;
+  if (!currentUser || !activeConversation || sending) return;
 
   const input = $("#messageInput");
   if (!input) return;
@@ -573,9 +589,8 @@ async function sendMessage() {
 
   sending = true;
 
-  const sendButton = $("#sendMessageBtn");
-
-  if (sendButton) sendButton.disabled = true;
+  const button = $("#sendMessageBtn");
+  if (button) button.disabled = true;
 
   try {
     const conversationRef = doc(
@@ -584,40 +599,47 @@ async function sendMessage() {
       activeConversation.id
     );
 
-    const messageRef = collection(
-      conversationRef,
-      "messages"
+    await addDoc(
+      collection(conversationRef, "messages"),
+      {
+        senderId: currentUser.uid,
+        senderName:
+          currentProfile?.name ||
+          currentUser.displayName ||
+          "Pengguna",
+        text: messageText,
+        createdAt: serverTimestamp(),
+        readBy: [currentUser.uid],
+        deliveredTo: [],
+        hiddenFor: [],
+        deletedForEveryone: false
+      }
     );
-
-    await addDoc(messageRef, {
-      senderId: currentUser.uid,
-      text: messageText,
-      createdAt: serverTimestamp(),
-      readBy: [currentUser.uid],
-      deliveredTo: [],
-      hiddenFor: [],
-      deletedForEveryone: false
-    });
 
     await updateDoc(conversationRef, {
       lastMessage: messageText,
       lastMessageAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      [`unreadCount.${activeConversation.otherUid}`]: increment(1)
+
+      ...Object.fromEntries(
+        activeConversation.participants
+          .filter(uid => uid !== currentUser.uid)
+          .map(uid => [
+            `unreadCount.${uid}`,
+            increment(1)
+          ])
+      )
     });
 
     input.value = "";
-
     await updateTyping(false);
 
   } catch (error) {
-    console.error("Send message:", error);
-    notify("Pesan gagal dikirim. Periksa koneksi dan Firestore Rules.");
+    console.error("Send:", error);
+    notify("Pesan gagal dikirim.");
   } finally {
     sending = false;
-
-    if (sendButton) sendButton.disabled = false;
-    input?.focus();
+    if (button) button.disabled = false;
   }
 }
 
@@ -635,39 +657,40 @@ $("#messageInput")?.addEventListener("keydown", event => {
    READ RECEIPTS
 ===================================== */
 
-async function markConversationRead(conversationId) {
-  if (!currentUser) return;
+async function markConversationRead() {
+  if (!activeConversation || !currentUser) return;
 
   try {
-    const conversationRef = doc(
+    const ref = collection(
       db,
       "conversations",
-      conversationId
-    );
-
-    const messagesRef = collection(
-      conversationRef,
+      activeConversation.id,
       "messages"
     );
 
     const snapshot = await getDocs(
-      query(messagesRef, where("senderId", "!=", currentUser.uid))
+      query(ref, where("senderId", "!=", currentUser.uid))
     );
 
     const batch = writeBatch(db);
+    let changes = 0;
 
-    snapshot.docs.forEach(messageDoc => {
-      const message = messageDoc.data();
+    snapshot.docs.forEach(item => {
+      const message = item.data();
 
       if (!message.readBy?.includes(currentUser.uid)) {
-        batch.update(messageDoc.ref, {
-          readBy: [
-            ...(message.readBy || []),
-            currentUser.uid
-          ]
+        batch.update(item.ref, {
+          readBy: arrayUnion(currentUser.uid)
         });
+        changes++;
       }
     });
+
+    const conversationRef = doc(
+      db,
+      "conversations",
+      activeConversation.id
+    );
 
     batch.update(conversationRef, {
       [`unreadCount.${currentUser.uid}`]: 0
@@ -688,7 +711,7 @@ async function markConversationRead(conversationId) {
 async function deleteMessage(messageId, message, sent) {
   if (!activeConversation) return;
 
-  const messageRef = doc(
+  const ref = doc(
     db,
     "conversations",
     activeConversation.id,
@@ -698,16 +721,13 @@ async function deleteMessage(messageId, message, sent) {
 
   try {
     if (sent) {
-      await updateDoc(messageRef, {
+      await updateDoc(ref, {
         deletedForEveryone: true,
         text: "Pesan ini telah dihapus."
       });
     } else {
-      await updateDoc(messageRef, {
-        hiddenFor: [
-          ...(message.hiddenFor || []),
-          currentUser.uid
-        ]
+      await updateDoc(ref, {
+        hiddenFor: arrayUnion(currentUser.uid)
       });
     }
 
@@ -715,7 +735,7 @@ async function deleteMessage(messageId, message, sent) {
 
   } catch (error) {
     console.error(error);
-    notify("Tidak dapat menghapus pesan.");
+    notify("Gagal menghapus pesan.");
   }
 }
 
@@ -724,221 +744,232 @@ async function deleteMessage(messageId, message, sent) {
    MESSAGE MENU
 ===================================== */
 
-function showMessageMenu(messageId, message, sent) {
-  const actions = sent
-    ? "Hapus untuk semua orang atau hapus dari tampilanmu."
-    : "Hapus pesan ini dari tampilanmu.";
-
-  if (!window.zorapModal) return;
-
-  const modal = $("#modalOverlay");
+function showMessageMenu(id, message, sent) {
+  const overlay = $("#modalOverlay");
   const content = $("#modalContent");
 
-  if (!modal || !content) return;
+  if (!overlay || !content) return;
 
   content.replaceChildren();
 
   const title = document.createElement("h2");
-  title.textContent = "Pesan";
-  title.style.fontSize = "18px";
+  title.textContent = "Opsi pesan";
 
-  const description = document.createElement("p");
-  description.textContent = actions;
-  description.style.color = "var(--muted)";
-  description.style.fontSize = "12px";
-  description.style.margin = "12px 0";
-
-  content.append(title, description);
-
-  const addAction = (label, callback) => {
+  const createAction = (label, callback) => {
     const button = document.createElement("button");
-
     button.className = "setting-item";
     button.textContent = label;
     button.style.width = "100%";
 
     button.addEventListener("click", async () => {
-      window.zorapCloseModal();
+      window.zorapCloseModal?.();
       await callback();
     });
 
     content.appendChild(button);
   };
 
-  addAction("Hapus untuk saya", () => {
-    return deleteMessage(messageId, message, false);
-  });
+  content.appendChild(title);
+
+  createAction("Hapus untuk saya", () =>
+    deleteMessage(id, message, false)
+  );
 
   if (sent) {
-    addAction("Hapus untuk semua orang", () => {
-      return deleteMessage(messageId, message, true);
-    });
+    createAction("Hapus untuk semua orang", () =>
+      deleteMessage(id, message, true)
+    );
   }
 
-  modal.classList.remove("hidden");
+  overlay.classList.remove("hidden");
 }
 
 
 /* =====================================
-   DELETE CONVERSATION
+   TYPING STATUS
 ===================================== */
 
-async function deleteConversation() {
-  if (!activeConversation) return;
+async function updateTyping(value) {
+  if (!activeConversation || !currentUser) return;
+
+  const ref = doc(
+    db,
+    "conversations",
+    activeConversation.id,
+    "typing",
+    currentUser.uid
+  );
 
   try {
-    const conversationRef = doc(
-      db,
-      "conversations",
-      activeConversation.id
-    );
-
-    await updateDoc(conversationRef, {
-      [`hiddenFor.${currentUser.uid}`]: true
+    await setDoc(ref, {
+      uid: currentUser.uid,
+      typing: value,
+      updatedAt: serverTimestamp()
     });
-
-    activeConversation = null;
-
-    activeMessageListener?.();
-    activeTypingListener?.();
-
-    $("#chatView")?.classList.add("hidden");
-    $("#welcomePanel")?.classList.remove("hidden");
-
-    document.querySelector(".app-layout")
-      ?.classList.remove("mobile-chat-open");
-
-    notify("Percakapan disembunyikan.");
-
   } catch (error) {
-    console.error(error);
-    notify("Gagal menghapus percakapan.");
+    console.error("Typing:", error);
   }
+}
+
+$("#messageInput")?.addEventListener("input", () => {
+  updateTyping(true);
+
+  clearTimeout(typingTimer);
+
+  typingTimer = setTimeout(() => {
+    updateTyping(false);
+  }, 1800);
+});
+
+
+function listenTyping() {
+  typingListener?.();
+
+  if (!activeConversation || isGroup()) return;
+
+  const otherUid = getOtherUid(activeConversation);
+
+  if (!otherUid) return;
+
+  const ref = doc(
+    db,
+    "conversations",
+    activeConversation.id,
+    "typing",
+    otherUid
+  );
+
+  typingListener = onSnapshot(ref, snapshot => {
+    const status = $("#conversationStatus");
+    if (!status) return;
+
+    status.textContent =
+      snapshot.exists() && snapshot.data().typing
+        ? "Sedang mengetik..."
+        : "ZORAP";
+  });
 }
 
 
 /* =====================================
-   CHAT MENU
+   CONVERSATION MENU
 ===================================== */
 
-function showChatMenu() {
-  const modal = $("#modalOverlay");
+function showConversationMenu() {
+  const overlay = $("#modalOverlay");
   const content = $("#modalContent");
 
-  if (!modal || !content) return;
+  if (!overlay || !content) return;
 
   content.replaceChildren();
 
   const title = document.createElement("h2");
   title.textContent = "Percakapan";
-  title.style.fontSize = "18px";
 
-  content.appendChild(title);
+  const leave = document.createElement("button");
+  leave.className = "setting-item";
+  leave.style.width = "100%";
+  leave.textContent = isGroup()
+    ? "Keluar dari grup"
+    : "Sembunyikan percakapan";
 
-  const button = document.createElement("button");
+  leave.addEventListener("click", async () => {
+    window.zorapCloseModal?.();
 
-  button.className = "setting-item";
-  button.textContent = "Hapus percakapan";
-  button.style.width = "100%";
+    if (isGroup()) {
+      await window.zorapGroups?.leaveGroup(activeConversation.id);
+    } else {
+      await updateDoc(
+        doc(db, "conversations", activeConversation.id),
+        {
+          [`hiddenFor.${currentUser.uid}`]: true
+        }
+      );
 
-  button.addEventListener("click", async () => {
-    window.zorapCloseModal();
-    await deleteConversation();
+      activeConversation = null;
+      messageListener?.();
+
+      $("#chatView")?.classList.add("hidden");
+      $("#welcomePanel")?.classList.remove("hidden");
+
+      document.querySelector(".app-layout")
+        ?.classList.remove("mobile-chat-open");
+    }
   });
 
-  content.appendChild(button);
-  modal.classList.remove("hidden");
+  content.append(title, leave);
+  overlay.classList.remove("hidden");
 }
 
 
 /* =====================================
-   USERNAME SEARCH
+   NEW CHAT
 ===================================== */
 
 async function searchUsername(username) {
-  if (!currentUser) return;
-
-  const cleanUsername = username
+  const clean = username
     .trim()
     .replace(/^@/, "")
     .toLowerCase();
 
-  if (!cleanUsername) {
-    notify("Masukkan username.");
-    return;
-  }
+  if (!clean) return;
 
   try {
-    const usersQuery = query(
+    const q = query(
       collection(db, "users"),
-      where("username", "==", cleanUsername)
+      where("username", "==", clean)
     );
 
-    const snapshot = await getDocs(usersQuery);
+    const result = await getDocs(q);
 
-    if (snapshot.empty) {
+    if (result.empty) {
       notify("Username tidak ditemukan.");
       return;
     }
 
-    const userDoc = snapshot.docs[0];
+    const item = result.docs[0];
 
-    await openConversation({
-      uid: userDoc.id,
-      ...userDoc.data()
+    await openPrivateChat({
+      uid: item.id,
+      ...item.data()
     });
 
     window.zorapCloseModal?.();
 
   } catch (error) {
-    console.error("Search username:", error);
-    notify("Pencarian gagal. Periksa Firestore Rules.");
+    console.error(error);
+    notify("Pencarian gagal.");
   }
 }
 
 
 /* =====================================
-   NEW CHAT MODAL
+   NEW CHAT EVENT
 ===================================== */
 
-function showNewChatModal() {
-  const modal = $("#modalOverlay");
+function showNewChat() {
+  const overlay = $("#modalOverlay");
   const content = $("#modalContent");
 
-  if (!modal || !content) return;
+  if (!overlay || !content) return;
 
   content.replaceChildren();
 
   const title = document.createElement("h2");
   title.textContent = "Mulai percakapan";
-  title.style.fontSize = "19px";
-
-  const description = document.createElement("p");
-  description.textContent = "Masukkan username pengguna ZORAP.";
-  description.style.margin = "10px 0 17px";
-  description.style.color = "var(--muted)";
-  description.style.fontSize = "12px";
 
   const input = document.createElement("input");
-
-  input.type = "text";
   input.placeholder = "@username";
-  input.autocomplete = "off";
   input.style.width = "100%";
   input.style.height = "45px";
-  input.style.padding = "0 13px";
-  input.style.border = "1px solid var(--border)";
-  input.style.borderRadius = "12px";
-  input.style.background = "var(--surface-2)";
-  input.style.color = "var(--text)";
-  input.style.outline = "none";
+  input.style.marginTop = "15px";
+  input.style.padding = "0 12px";
 
   const button = document.createElement("button");
-
   button.className = "primary-btn";
   button.textContent = "Cari pengguna";
   button.style.width = "100%";
-  button.style.marginTop = "13px";
+  button.style.marginTop = "12px";
 
   button.addEventListener("click", () => {
     searchUsername(input.value);
@@ -950,88 +981,20 @@ function showNewChatModal() {
     }
   });
 
-  content.append(title, description, input, button);
-
-  modal.classList.remove("hidden");
-
-  setTimeout(() => input.focus(), 100);
+  content.append(title, input, button);
+  overlay.classList.remove("hidden");
 }
 
-window.addEventListener("zorap:newchat", showNewChatModal);
+window.addEventListener("zorap:newchat", showNewChat);
 
 
 /* =====================================
-   TYPING INDICATOR
+   GROUP EVENT
 ===================================== */
 
-async function updateTyping(isTyping) {
-  if (!activeConversation || !currentUser) return;
-
-  const typingRef = doc(
-    db,
-    "conversations",
-    activeConversation.id,
-    "typing",
-    currentUser.uid
-  );
-
-  try {
-    if (isTyping) {
-      await setDoc(typingRef, {
-        uid: currentUser.uid,
-        typing: true,
-        updatedAt: serverTimestamp()
-      });
-    } else {
-      await setDoc(typingRef, {
-        uid: currentUser.uid,
-        typing: false,
-        updatedAt: serverTimestamp()
-      });
-    }
-  } catch (error) {
-    console.error("Typing status:", error);
-  }
-}
-
-let typingTimeout;
-
-$("#messageInput")?.addEventListener("input", () => {
-  updateTyping(true);
-
-  clearTimeout(typingTimeout);
-
-  typingTimeout = setTimeout(() => {
-    updateTyping(false);
-  }, 1800);
+window.addEventListener("zorap:open-group", event => {
+  openGroupConversation(event.detail);
 });
-
-function listenTyping() {
-  if (!activeConversation) return;
-
-  activeTypingListener?.();
-
-  const typingRef = doc(
-    db,
-    "conversations",
-    activeConversation.id,
-    "typing",
-    activeConversation.otherUid
-  );
-
-  activeTypingListener = onSnapshot(typingRef, snapshot => {
-    const status = $("#conversationStatus");
-
-    if (!status) return;
-
-    const typing = snapshot.exists() &&
-      snapshot.data().typing === true;
-
-    status.textContent = typing
-      ? "Sedang mengetik..."
-      : "ZORAP";
-  });
-}
 
 
 /* =====================================
@@ -1039,6 +1002,8 @@ function listenTyping() {
 ===================================== */
 
 window.zorapChat = {
+  openPrivateChat,
+  openGroupConversation,
   openConversation,
   searchUsername,
   loadConversations,
@@ -1052,4 +1017,4 @@ window.zorapChat = {
   }
 };
 
-console.log("ZORAP Chat Engine initialized.");
+console.log("ZORAP Unified Chat initialized.");
