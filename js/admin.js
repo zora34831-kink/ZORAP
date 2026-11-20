@@ -7,882 +7,199 @@ import {
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
 
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  where,
-  updateDoc,
-  addDoc,
-  serverTimestamp,
-  Timestamp
+  collection, getDocs, doc, getDoc, updateDoc,
+  query, orderBy, limit, where, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 
-/* =========================================
-   ZORAP ADMIN SYSTEM
-========================================= */
-
-const $ = (selector) => document.querySelector(selector);
+const $ = id => document.getElementById(id);
 
 let adminUser = null;
-let adminProfile = null;
 let usersCache = [];
 let appealsCache = [];
-let logsCache = [];
-let activeAdminPage = "overview";
 
-const ADMIN_COLLECTIONS = {
-  users: "users",
-  appeals: "appeals",
-  logs: "adminLogs"
-};
+function escapeHTML(value = "") {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#039;"
+  })[c]);
+}
 
-const escapeHTML = (value = "") =>
-  String(value).replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[char]);
-
-const formatDate = (value) => {
-  if (!value) return "-";
-
-  const date = value.toDate
-    ? value.toDate()
-    : new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return date.toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-};
-
-const getInitial = (name = "U") =>
-  escapeHTML(String(name).trim().charAt(0).toUpperCase() || "U");
-
-function toast(message, type = "success") {
-  if (window.zorapToast) {
-    window.zorapToast(message, type);
-    return;
-  }
-
-  const container = $("#toastContainer");
-
+function notify(message) {
+  const container = $("toastContainer");
   if (!container) {
-    console.log(message);
+    alert(message);
     return;
   }
 
-  const item = document.createElement("div");
-  item.className = `toast ${type}`;
-  item.textContent = message;
-
-  container.appendChild(item);
-
-  setTimeout(() => item.remove(), 3500);
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
 }
 
-/* =========================================
-   ACCESS CONTROL
-========================================= */
+function showAdminPage(page) {
+  document.querySelectorAll("[data-admin-page]").forEach(button => {
+    button.classList.toggle("active", button.dataset.adminPage === page);
+  });
 
-async function checkAdminAccess(user) {
-  if (!user) {
-    location.replace("./index.html");
-    return false;
-  }
+  document.querySelectorAll(".admin-page").forEach(section => {
+    section.classList.toggle("active", section.id === `admin${capitalize(page)}Page`);
+  });
 
-  try {
-    const userRef = doc(db, "users", user.uid);
-    const snapshot = await getDoc(userRef);
-
-    if (!snapshot.exists()) {
-      await signOut(auth);
-      location.replace("./index.html");
-      return false;
-    }
-
-    const profile = snapshot.data();
-
-    // Role harus ditetapkan melalui proses tepercaya.
-    if (profile.role !== "admin") {
-      document.body.innerHTML = `
-        <main style="
-          min-height:100vh;
-          display:grid;
-          place-items:center;
-          padding:24px;
-          background:#0b0911;
-          color:white;
-          font-family:Arial,sans-serif;
-          text-align:center
-        ">
-          <div>
-            <h1 style="font-size:25px">Akses Ditolak</h1>
-            <p style="color:#aaa">Akun ini tidak memiliki akses administrator.</p>
-            <button id="returnApp" style="
-              padding:12px 20px;
-              border:0;
-              border-radius:10px;
-              background:#9872ed;
-              color:white;
-              cursor:pointer
-            ">Kembali ke ZORAP</button>
-          </div>
-        </main>
-      `;
-
-      $("#returnApp")?.addEventListener("click", () => {
-        location.replace("./app.html");
-      });
-
-      return false;
-    }
-
-    adminUser = user;
-    adminProfile = profile;
-
-    return true;
-
-  } catch (error) {
-    console.error("Admin access error:", error);
-    toast("Gagal memeriksa akses administrator.", "error");
-    return false;
-  }
+  const title = $("adminPageTitle");
+  if (title) title.textContent = page.charAt(0).toUpperCase() + page.slice(1);
 }
 
-/* =========================================
-   ADMIN PROFILE
-========================================= */
-
-function renderAdminProfile() {
-  const name =
-    adminProfile?.name ||
-    adminUser?.displayName ||
-    "Administrator";
-
-  const role = adminProfile?.adminRole || "Administrator";
-
-  if ($("#adminName")) {
-    $("#adminName").textContent = name;
-  }
-
-  if ($("#adminRole")) {
-    $("#adminRole").textContent = role;
-  }
-
-  if ($("#overviewAdminName")) {
-    $("#overviewAdminName").textContent = name;
-  }
+function capitalize(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-/* =========================================
-   LOG ACTIVITY
-========================================= */
-
-async function writeAdminLog(action, targetUid, details = {}) {
-  if (!adminUser) return;
-
-  try {
-    await addDoc(collection(db, ADMIN_COLLECTIONS.logs), {
-      adminId: adminUser.uid,
-      adminName: adminProfile?.name || adminUser.email || "Admin",
-      action,
-      targetUid: targetUid || null,
-      details,
-      createdAt: serverTimestamp()
-    });
-  } catch (error) {
-    console.error("Admin log error:", error);
-    toast("Aksi dilakukan, tetapi log gagal disimpan.", "warning");
-  }
+async function verifyAdmin(user) {
+  const token = await user.getIdTokenResult(true);
+  return token.claims.admin === true;
 }
 
-/* =========================================
-   LOAD USERS
-========================================= */
+async function writeLog(action, targetUid, details = {}) {
+  await addDoc(collection(db, "adminLogs"), {
+    adminId: adminUser.uid,
+    action,
+    targetUid: targetUid || "",
+    details,
+    createdAt: serverTimestamp()
+  });
+}
 
 async function loadUsers() {
-  const table = $("#adminUsersTable");
+  const snapshot = await getDocs(
+    query(collection(db, "users"), limit(300))
+  );
 
-  if (table) {
-    table.innerHTML = `
-      <tr>
-        <td colspan="6" class="admin-loading">Memuat pengguna...</td>
-      </tr>
-    `;
-  }
+  usersCache = snapshot.docs.map(item => ({
+    uid: item.id,
+    ...item.data()
+  }));
 
-  try {
-    const snapshot = await getDocs(
-      query(
-        collection(db, ADMIN_COLLECTIONS.users),
-        limit(500)
-      )
-    );
-
-    usersCache = snapshot.docs.map(item => ({
-      uid: item.id,
-      ...item.data()
-    }));
-
-    renderUsers();
-    renderOverviewStats();
-
-  } catch (error) {
-    console.error("Load users:", error);
-    toast("Gagal memuat pengguna.", "error");
-
-    if (table) {
-      table.innerHTML = `
-        <tr><td colspan="6" class="admin-empty">
-          Tidak dapat memuat data pengguna.
-        </td></tr>
-      `;
-    }
-  }
+  renderUsers();
+  renderOverview();
 }
 
-/* =========================================
-   USER STATUS
-========================================= */
+function renderOverview() {
+  const total = usersCache.length;
+  const verified = usersCache.filter(user => user.verified).length;
+  const suspended = usersCache.filter(user => user.suspended).length;
+  const pending = appealsCache.filter(item => item.status === "pending").length;
 
-function isSuspended(user) {
-  if (!user.suspended) return false;
+  if ($("totalUsers")) $("totalUsers").textContent = total;
+  if ($("verifiedUsers")) $("verifiedUsers").textContent = verified;
+  if ($("suspendedUsers")) $("suspendedUsers").textContent = suspended;
+  if ($("pendingAppeals")) $("pendingAppeals").textContent = pending;
 
-  if (user.suspensionType === "permanent") return true;
-
-  if (!user.suspensionUntil) return true;
-
-  const expiry = user.suspensionUntil.toDate
-    ? user.suspensionUntil.toDate()
-    : new Date(user.suspensionUntil);
-
-  return expiry.getTime() > Date.now();
-}
-
-function getUserStatus(user) {
-  if (isSuspended(user)) {
-    return `<span class="admin-badge danger">Suspended</span>`;
+  if ($("overviewAdminName")) {
+    $("overviewAdminName").textContent = adminUser?.email || "Administrator";
   }
-
-  if (user.verified) {
-    return `<span class="admin-badge success">Verified</span>`;
-  }
-
-  return `<span class="admin-badge neutral">Normal</span>`;
 }
-
-/* =========================================
-   RENDER USERS
-========================================= */
 
 function renderUsers() {
-  const table = $("#adminUsersTable");
-  if (!table) return;
+  const target = $("adminUsersTable");
+  if (!target) return;
 
-  const keyword = ($("#adminUserSearch")?.value || "")
-    .trim()
-    .toLowerCase();
-
-  const filter = $("#adminUserFilter")?.value || "all";
+  const search = ($("adminUserSearch")?.value || "").toLowerCase();
+  const filter = $("adminUserFilter")?.value || "all";
 
   const filtered = usersCache.filter(user => {
-    const name = (user.name || "").toLowerCase();
-    const username = (user.username || "").toLowerCase();
-    const email = (user.email || "").toLowerCase();
-
     const matchesSearch =
-      name.includes(keyword) ||
-      username.includes(keyword) ||
-      email.includes(keyword) ||
-      user.uid.toLowerCase().includes(keyword);
+      (user.name || "").toLowerCase().includes(search) ||
+      (user.username || "").toLowerCase().includes(search) ||
+      (user.email || "").toLowerCase().includes(search) ||
+      user.uid.toLowerCase().includes(search);
 
-    let matchesFilter = true;
-
-    if (filter === "verified") {
-      matchesFilter = !!user.verified;
-    }
-
-    if (filter === "normal") {
-      matchesFilter = !user.verified && !isSuspended(user);
-    }
-
-    if (filter === "suspended") {
-      matchesFilter = isSuspended(user);
-    }
+    const matchesFilter =
+      filter === "all" ||
+      (filter === "verified" && user.verified) ||
+      (filter === "suspended" && user.suspended) ||
+      (filter === "normal" && !user.suspended && !user.verified);
 
     return matchesSearch && matchesFilter;
   });
 
-  if (!filtered.length) {
-    table.innerHTML = `
-      <tr>
-        <td colspan="6" class="admin-empty">
-          Tidak ada pengguna ditemukan.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  table.innerHTML = filtered.map(user => {
-    const name = escapeHTML(user.name || "Pengguna");
-    const username = escapeHTML(user.username || "tanpa_username");
-    const email = escapeHTML(user.email || user.uid);
-
-    return `
-      <tr>
-        <td>
-          <div class="admin-user-cell">
-            <div class="admin-avatar">${getInitial(name)}</div>
-            <div>
-              <strong>${name}</strong>
-              <small>@${username}</small>
-            </div>
-          </div>
-        </td>
-        <td>${email}</td>
-        <td>${getUserStatus(user)}</td>
-        <td>${formatDate(user.createdAt)}</td>
-        <td>
-          <button class="admin-action-button"
-            data-user-action="detail"
-            data-uid="${escapeHTML(user.uid)}">
-            Detail
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join("");
-}
-
-/* =========================================
-   OVERVIEW STATS
-========================================= */
-
-function renderOverviewStats() {
-  const total = usersCache.length;
-  const verified = usersCache.filter(user => user.verified).length;
-  const suspended = usersCache.filter(user => isSuspended(user)).length;
-
-  if ($("#totalUsers")) {
-    $("#totalUsers").textContent = total.toLocaleString("id-ID");
-  }
-
-  if ($("#verifiedUsers")) {
-    $("#verifiedUsers").textContent = verified.toLocaleString("id-ID");
-  }
-
-  if ($("#suspendedUsers")) {
-    $("#suspendedUsers").textContent = suspended.toLocaleString("id-ID");
-  }
-
-  if ($("#pendingAppeals")) {
-    $("#pendingAppeals").textContent =
-      appealsCache.filter(item => item.status === "pending").length;
-  }
-
-  renderRecentUsers();
-}
-
-function renderRecentUsers() {
-  const table = $("#recentUsersTable");
-  if (!table) return;
-
-  const recent = [...usersCache]
-    .sort((a, b) => {
-      const dateA = a.createdAt?.toMillis?.() || 0;
-      const dateB = b.createdAt?.toMillis?.() || 0;
-      return dateB - dateA;
-    })
-    .slice(0, 5);
-
-  if (!recent.length) {
-    table.innerHTML = `
-      <tr><td colspan="4" class="admin-empty">
-        Belum ada pengguna.
-      </td></tr>
-    `;
-    return;
-  }
-
-  table.innerHTML = recent.map(user => `
+  target.innerHTML = filtered.map(user => `
     <tr>
-      <td>${escapeHTML(user.name || "Pengguna")}</td>
-      <td>@${escapeHTML(user.username || "-")}</td>
-      <td>${getUserStatus(user)}</td>
-      <td>${formatDate(user.createdAt)}</td>
+      <td>
+        <strong>${escapeHTML(user.name || "Tanpa nama")}</strong>
+        <small>@${escapeHTML(user.username || "-")}</small>
+      </td>
+      <td>${escapeHTML(user.email || "-")}</td>
+      <td>${user.verified ? "Verified" : "Belum"}</td>
+      <td>${user.suspended ? "Suspended" : "Aktif"}</td>
+      <td>
+        <button class="admin-action" data-user-action="verified"
+          data-uid="${escapeHTML(user.uid)}">
+          ${user.verified ? "Cabut centang" : "Verifikasi"}
+        </button>
+        <button class="admin-action" data-user-action="suspend"
+          data-uid="${escapeHTML(user.uid)}">
+          ${user.suspended ? "Pulihkan" : "Suspend"}
+        </button>
+      </td>
     </tr>
-  `).join("");
+  `).join("") || `<tr><td colspan="5">Pengguna tidak ditemukan</td></tr>`;
 }
 
-/* =========================================
-   USER DETAIL MODAL
-========================================= */
+async function callAdminEndpoint(endpoint, targetUid) {
+  const token = await adminUser.getIdToken(true);
 
-function openAdminModal(title, content) {
-  const modal = $("#adminModal");
-  const body = $("#adminModalBody");
-  const contentElement = $("#adminModalContent");
-
-  if (!modal) return;
-
-  if (contentElement) {
-    contentElement.innerHTML = `
-      <div class="modal-heading">
-        <h3>${escapeHTML(title)}</h3>
-      </div>
-      ${content}
-    `;
-  } else if (body) {
-    body.innerHTML = content;
-  }
-
-  modal.classList.remove("hidden");
-  modal.classList.add("active");
-}
-
-function closeAdminModal() {
-  const modal = $("#adminModal");
-  if (!modal) return;
-
-  modal.classList.add("hidden");
-  modal.classList.remove("active");
-}
-
-function showUserDetail(uid) {
-  const user = usersCache.find(item => item.uid === uid);
-  if (!user) return;
-
-  const suspended = isSuspended(user);
-
-  openAdminModal("Detail Pengguna", `
-    <div class="admin-user-detail">
-      <div class="admin-avatar">${getInitial(user.name || "U")}</div>
-      <h3>${escapeHTML(user.name || "Pengguna")}</h3>
-      <p>@${escapeHTML(user.username || "-")}</p>
-
-      <div class="system-status-list">
-        <div><span>Email</span><strong>${escapeHTML(user.email || "-")}</strong></div>
-        <div><span>User ID</span><strong>${escapeHTML(uid)}</strong></div>
-        <div><span>Status</span><strong>${suspended ? "Suspended" : "Aktif"}</strong></div>
-        <div><span>Verified</span><strong>${user.verified ? "Ya" : "Tidak"}</strong></div>
-        <div><span>Bergabung</span><strong>${formatDate(user.createdAt)}</strong></div>
-      </div>
-
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:20px">
-        <button class="admin-action-button"
-          data-user-action="verify"
-          data-uid="${escapeHTML(uid)}">
-          ${user.verified ? "Cabut Verified" : "Berikan Verified"}
-        </button>
-
-        <button class="admin-action-button danger"
-          data-user-action="suspend"
-          data-uid="${escapeHTML(uid)}">
-          ${suspended ? "Cabut Suspend" : "Suspend"}
-        </button>
-      </div>
-    </div>
-  `);
-}
-
-/* =========================================
-   VERIFIED MANAGEMENT
-========================================= */
-
-async function toggleVerification(uid) {
-  if (uid === adminUser.uid) {
-    toast("Tidak dapat mengubah status akun sendiri.", "warning");
-    return;
-  }
-
-  const user = usersCache.find(item => item.uid === uid);
-  if (!user) return;
-
-  const nextValue = !user.verified;
-
-  if (!confirm(
-    nextValue
-      ? "Berikan centang biru kepada pengguna ini?"
-      : "Cabut centang biru pengguna ini?"
-  )) return;
-
-  try {
-    await updateDoc(doc(db, "users", uid), {
-      verified: nextValue,
-      verifiedAt: nextValue ? serverTimestamp() : null,
-      verifiedBy: nextValue ? adminUser.uid : null
-    });
-
-    await writeAdminLog(
-      nextValue ? "verified_granted" : "verified_revoked",
-      uid,
-      { verified: nextValue }
-    );
-
-    user.verified = nextValue;
-
-    toast(
-      nextValue
-        ? "Centang biru berhasil diberikan."
-        : "Centang biru berhasil dicabut."
-    );
-
-    closeAdminModal();
-    renderUsers();
-    renderOverviewStats();
-
-  } catch (error) {
-    console.error(error);
-    toast("Gagal mengubah status verified. Periksa Firestore Rules.", "error");
-  }
-}
-
-/* =========================================
-   SUSPENSION MODAL
-========================================= */
-
-function showSuspendForm(uid) {
-  const user = usersCache.find(item => item.uid === uid);
-  if (!user) return;
-
-  if (uid === adminUser.uid) {
-    toast("Tidak dapat menangguhkan akun sendiri.", "warning");
-    return;
-  }
-
-  if (isSuspended(user)) {
-    removeSuspension(uid);
-    return;
-  }
-
-  openAdminModal("Tangguhkan Akun", `
-    <form id="adminSuspendForm">
-      <p style="color:#aaa;font-size:12px">
-        Akun: <strong>${escapeHTML(user.name || user.username || uid)}</strong>
-      </p>
-
-      <label for="suspensionType">Jenis penangguhan</label>
-      <select id="suspensionType" required>
-        <option value="temporary">Sementara</option>
-        <option value="permanent">Permanen</option>
-      </select>
-
-      <div id="suspensionDurationBox">
-        <label for="suspensionDuration">Durasi</label>
-        <select id="suspensionDuration">
-          <option value="1">1 hari</option>
-          <option value="3">3 hari</option>
-          <option value="7" selected>7 hari</option>
-          <option value="30">30 hari</option>
-        </select>
-      </div>
-
-      <label for="suspensionReason">Alasan</label>
-      <textarea id="suspensionReason"
-        maxlength="500"
-        required
-        placeholder="Tuliskan alasan penangguhan..."></textarea>
-
-      <button class="admin-action-button danger"
-        type="submit"
-        style="width:100%;margin-top:15px;padding:12px">
-        Konfirmasi Penangguhan
-      </button>
-    </form>
-  `);
-
-  $("#suspensionType")?.addEventListener("change", event => {
-    const box = $("#suspensionDurationBox");
-    if (box) {
-      box.style.display =
-        event.target.value === "permanent" ? "none" : "block";
-    }
+  const response = await fetch(`/api/admin/${endpoint}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify({ uid: targetUid })
   });
 
-  $("#adminSuspendForm")?.addEventListener("submit", async event => {
-    event.preventDefault();
+  const result = await response.json();
 
-    const type = $("#suspensionType").value;
-    const reason = $("#suspensionReason").value.trim();
-    const days = Number($("#suspensionDuration").value);
+  if (!response.ok) {
+    throw new Error(result.error || "Permintaan admin gagal");
+  }
 
-    if (!reason) {
-      toast("Alasan wajib diisi.", "warning");
-      return;
+  return result;
+}
+
+async function toggleVerified(uid, currentlyVerified) {
+  try {
+    if (currentlyVerified) {
+      await callAdminEndpoint("revoke", uid);
+    } else {
+      await callAdminEndpoint("grant", uid);
     }
 
-    const expiry = type === "temporary"
-      ? Timestamp.fromDate(
-          new Date(Date.now() + days * 24 * 60 * 60 * 1000)
-        )
-      : null;
+    await updateDoc(doc(db, "users", uid), {
+      verified: !currentlyVerified,
+      verifiedAt: currentlyVerified ? null : serverTimestamp(),
+      verifiedBy: currentlyVerified ? null : adminUser.uid
+    });
+
+    await writeLog(
+      currentlyVerified ? "verified_removed" : "verified_granted",
+      uid
+    );
+
+    notify("Status verifikasi diperbarui");
+    await loadUsers();
+  } catch (error) {
+    console.error(error);
+    notify(error.message);
+  }
+}
+
+async function toggleSuspension(uid, currentlySuspended) {
+  if (currentlySuspended) {
+    if (!confirm("Pulihkan akun ini?")) return;
 
     try {
       await updateDoc(doc(db, "users", uid), {
-        suspended: true,
-        suspensionType: type,
-        suspensionReason: reason,
-        suspensionUntil: expiry,
-        suspendedAt: serverTimestamp(),
-        suspendedBy: adminUser.uid
-      });
-
-      await writeAdminLog("user_suspended", uid, {
-        type,
-        reason,
-        days: type === "temporary" ? days : null
-      });
-
-      user.suspended = true;
-      user.suspensionType = type;
-      user.suspensionUntil = expiry;
-      user.suspensionReason = reason;
-
-      closeAdminModal();
-      renderUsers();
-      renderOverviewStats();
-
-      toast("Penangguhan berhasil disimpan.");
-
-    } catch (error) {
-      console.error(error);
-      toast("Gagal menangguhkan akun. Periksa Firestore Rules.", "error");
-    }
-  });
-}
-
-/* =========================================
-   REMOVE SUSPENSION
-========================================= */
-
-async function removeSuspension(uid) {
-  const user = usersCache.find(item => item.uid === uid);
-  if (!user) return;
-
-  if (!confirm("Cabut penangguhan akun ini?")) return;
-
-  try {
-    await updateDoc(doc(db, "users", uid), {
-      suspended: false,
-      suspensionType: null,
-      suspensionReason: null,
-      suspensionUntil: null,
-      suspensionRemovedAt: serverTimestamp(),
-      suspensionRemovedBy: adminUser.uid
-    });
-
-    await writeAdminLog("suspension_removed", uid);
-
-    user.suspended = false;
-    user.suspensionType = null;
-    user.suspensionUntil = null;
-
-    closeAdminModal();
-    renderUsers();
-    renderOverviewStats();
-
-    toast("Penangguhan berhasil dicabut.");
-
-  } catch (error) {
-    console.error(error);
-    toast("Gagal mencabut penangguhan.", "error");
-  }
-}
-
-/* =========================================
-   LOAD APPEALS
-========================================= */
-
-async function loadAppeals() {
-  const table = $("#appealsTable");
-
-  if (table) {
-    table.innerHTML = `
-      <tr><td colspan="5" class="admin-loading">
-        Memuat banding...
-      </td></tr>
-    `;
-  }
-
-  try {
-    const snapshot = await getDocs(
-      query(
-        collection(db, ADMIN_COLLECTIONS.appeals),
-        orderBy("createdAt", "desc"),
-        limit(200)
-      )
-    );
-
-    appealsCache = snapshot.docs.map(item => ({
-      id: item.id,
-      ...item.data()
-    }));
-
-    renderAppeals();
-    renderOverviewStats();
-
-  } catch (error) {
-    console.error("Appeals error:", error);
-
-    if (table) {
-      table.innerHTML = `
-        <tr><td colspan="5" class="admin-empty">
-          Gagal memuat banding. Pastikan koleksi appeals dan Rules tersedia.
-        </td></tr>
-      `;
-    }
-  }
-}
-
-function renderAppeals() {
-  const table = $("#appealsTable");
-  if (!table) return;
-
-  const pending = appealsCache.filter(
-    appeal => appeal.status === "pending"
-  );
-
-  const count = $("#appealNavCount");
-  if (count) {
-    count.textContent = pending.length;
-    count.style.display = pending.length ? "grid" : "none";
-  }
-
-  if (!appealsCache.length) {
-    table.innerHTML = `
-      <tr><td colspan="5" class="admin-empty">
-        Belum ada pengajuan banding.
-      </td></tr>
-    `;
-    return;
-  }
-
-  table.innerHTML = appealsCache.map(appeal => {
-    const statusClass =
-      appeal.status === "approved" ? "success" :
-      appeal.status === "rejected" ? "danger" :
-      "warning";
-
-    return `
-      <tr>
-        <td>${escapeHTML(appeal.username || appeal.userName || appeal.userId || "-")}</td>
-        <td>${escapeHTML(appeal.reason || appeal.message || "-")}</td>
-        <td>${formatDate(appeal.createdAt)}</td>
-        <td>
-          <span class="admin-badge ${statusClass}">
-            ${escapeHTML(appeal.status || "pending")}
-          </span>
-        </td>
-        <td>
-          <button class="admin-action-button"
-            data-appeal-action="detail"
-            data-id="${escapeHTML(appeal.id)}">
-            Periksa
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join("");
-}
-
-/* =========================================
-   APPEAL DETAIL
-========================================= */
-
-function showAppealDetail(id) {
-  const appeal = appealsCache.find(item => item.id === id);
-  if (!appeal) return;
-
-  const canReview = appeal.status === "pending";
-
-  openAdminModal("Detail Banding", `
-    <div class="system-status-list">
-      <div><span>Pengguna</span><strong>${escapeHTML(appeal.username || appeal.userName || appeal.userId || "-")}</strong></div>
-      <div><span>Status</span><strong>${escapeHTML(appeal.status || "pending")}</strong></div>
-      <div><span>Diajukan</span><strong>${formatDate(appeal.createdAt)}</strong></div>
-      <div><span>ID Banding</span><strong>${escapeHTML(id)}</strong></div>
-    </div>
-
-    <div style="margin-top:18px">
-      <label>Isi pengajuan</label>
-      <div style="
-        padding:14px;
-        border-radius:10px;
-        background:#100d18;
-        color:#ddd;
-        font-size:12px;
-        line-height:1.7;
-        white-space:pre-wrap
-      ">${escapeHTML(appeal.message || appeal.reason || "Tidak ada pesan.")}</div>
-    </div>
-
-    ${canReview ? `
-      <label for="appealDecisionNote">Catatan keputusan</label>
-      <textarea id="appealDecisionNote"
-        maxlength="500"
-        placeholder="Catatan untuk pengguna..."></textarea>
-
-      <div style="display:flex;gap:9px;margin-top:15px">
-        <button class="admin-action-button"
-          data-appeal-action="approve"
-          data-id="${escapeHTML(id)}">
-          Terima Banding
-        </button>
-
-        <button class="admin-action-button danger"
-          data-appeal-action="reject"
-          data-id="${escapeHTML(id)}">
-          Tolak Banding
-        </button>
-      </div>
-    ` : `
-      <p style="color:#aaa;font-size:11px;margin-top:18px">
-        Banding ini sudah diproses.
-      </p>
-    `}
-  `);
-}
-
-/* =========================================
-   REVIEW APPEAL
-========================================= */
-
-async function reviewAppeal(id, decision) {
-  const appeal = appealsCache.find(item => item.id === id);
-  if (!appeal || appeal.status !== "pending") return;
-
-  const note = $("#appealDecisionNote")?.value.trim() || "";
-
-  if (!confirm(
-    decision === "approved"
-      ? "Terima pengajuan banding ini?"
-      : "Tolak pengajuan banding ini?"
-  )) return;
-
-  try {
-    await updateDoc(doc(db, ADMIN_COLLECTIONS.appeals, id), {
-      status: decision,
-      adminNote: note,
-      reviewedBy: adminUser.uid,
-      reviewedAt: serverTimestamp()
-    });
-
-    // Banding yang diterima menghapus status suspend.
-    if (decision === "approved" && appeal.userId) {
-      await updateDoc(doc(db, "users", appeal.userId), {
         suspended: false,
         suspensionType: null,
         suspensionReason: null,
@@ -891,360 +208,252 @@ async function reviewAppeal(id, decision) {
         suspensionRemovedBy: adminUser.uid
       });
 
-      const user = usersCache.find(item => item.uid === appeal.userId);
-      if (user) {
-        user.suspended = false;
-        user.suspensionType = null;
-        user.suspensionUntil = null;
-      }
+      await writeLog("account_restored", uid);
+      notify("Akun berhasil dipulihkan");
+      await loadUsers();
+    } catch (error) {
+      console.error(error);
+      notify("Gagal memulihkan akun");
     }
 
-    await writeAdminLog("appeal_" + decision, appeal.userId, {
-      appealId: id,
-      note
+    return;
+  }
+
+  const reason = prompt("Alasan penangguhan akun:");
+  if (!reason?.trim()) return;
+
+  const duration = prompt(
+    "Masukkan durasi dalam hari. Isi 0 untuk penangguhan permanen:"
+  );
+
+  if (duration === null || !/^\d+$/.test(duration)) {
+    notify("Durasi tidak valid");
+    return;
+  }
+
+  const days = Number(duration);
+  const until = days > 0
+    ? new Date(Date.now() + days * 86400000)
+    : null;
+
+  try {
+    await updateDoc(doc(db, "users", uid), {
+      suspended: true,
+      suspensionType: days > 0 ? "temporary" : "permanent",
+      suspensionReason: reason.trim().slice(0, 500),
+      suspensionUntil: until,
+      suspendedAt: serverTimestamp(),
+      suspendedBy: adminUser.uid
     });
 
-    appeal.status = decision;
+    await writeLog("account_suspended", uid, {
+      type: days > 0 ? "temporary" : "permanent",
+      days,
+      reason: reason.trim()
+    });
 
-    closeAdminModal();
-    renderAppeals();
-    renderUsers();
-    renderOverviewStats();
+    notify("Akun berhasil ditangguhkan");
+    await loadUsers();
+  } catch (error) {
+    console.error(error);
+    notify("Gagal menangguhkan akun");
+  }
+}
 
-    toast(
-      decision === "approved"
-        ? "Banding diterima."
-        : "Banding ditolak."
-    );
+async function loadAppeals() {
+  const snapshot = await getDocs(
+    query(collection(db, "appeals"), orderBy("createdAt", "desc"), limit(200))
+  );
+
+  appealsCache = snapshot.docs.map(item => ({
+    id: item.id,
+    ...item.data()
+  }));
+
+  renderAppeals();
+  renderOverview();
+}
+
+function renderAppeals() {
+  const target = $("appealsTable");
+  if (!target) return;
+
+  target.innerHTML = appealsCache.map(appeal => `
+    <tr>
+      <td>${escapeHTML(appeal.userId || "-")}</td>
+      <td>${escapeHTML(appeal.reason || "-")}</td>
+      <td>${escapeHTML(appeal.status || "pending")}</td>
+      <td>
+        ${appeal.status === "pending" ? `
+          <button class="admin-action" data-appeal-action="approve"
+            data-id="${escapeHTML(appeal.id)}">Setujui</button>
+          <button class="admin-action" data-appeal-action="reject"
+            data-id="${escapeHTML(appeal.id)}">Tolak</button>
+        ` : "-"}
+      </td>
+    </tr>
+  `).join("") || `<tr><td colspan="4">Belum ada banding</td></tr>`;
+
+  if ($("appealNavCount")) {
+    $("appealNavCount").textContent =
+      appealsCache.filter(item => item.status === "pending").length;
+  }
+}
+
+async function reviewAppeal(id, decision) {
+  const note = prompt("Catatan admin (opsional):") || "";
+
+  try {
+    const appealRef = doc(db, "appeals", id);
+    const appealSnap = await getDoc(appealRef);
+
+    if (!appealSnap.exists()) throw new Error("Banding tidak ditemukan");
+
+    const appeal = appealSnap.data();
+    if (appeal.status !== "pending") {
+      throw new Error("Banding sudah diproses");
+    }
+
+    await updateDoc(appealRef, {
+      status: decision,
+      adminNote: note.slice(0, 500),
+      reviewedBy: adminUser.uid,
+      reviewedAt: serverTimestamp()
+    });
+
+    if (decision === "approved") {
+      await updateDoc(doc(db, "users", appeal.userId), {
+        suspended: false,
+        suspensionType: null,
+        suspensionReason: null,
+        suspensionUntil: null,
+        suspensionRemovedAt: serverTimestamp(),
+        suspensionRemovedBy: adminUser.uid
+      });
+    }
+
+    await writeLog(`appeal_${decision}`, appeal.userId, { appealId: id });
+    notify("Banding berhasil diproses");
+    await loadAppeals();
+    await loadUsers();
 
   } catch (error) {
     console.error(error);
-    toast("Gagal memproses banding.", "error");
+    notify(error.message || "Gagal memproses banding");
   }
 }
-
-/* =========================================
-   SUSPENSION TABLE
-========================================= */
-
-function renderSuspensions() {
-  const table = $("#suspensionsTable");
-  if (!table) return;
-
-  const suspendedUsers = usersCache.filter(isSuspended);
-
-  if (!suspendedUsers.length) {
-    table.innerHTML = `
-      <tr><td colspan="5" class="admin-empty">
-        Tidak ada akun yang sedang ditangguhkan.
-      </td></tr>
-    `;
-    return;
-  }
-
-  table.innerHTML = suspendedUsers.map(user => `
-    <tr>
-      <td>${escapeHTML(user.name || user.username || "Pengguna")}</td>
-      <td>${escapeHTML(user.suspensionType || "-")}</td>
-      <td>${escapeHTML(user.suspensionReason || "-")}</td>
-      <td>${user.suspensionType === "permanent"
-        ? "Permanen"
-        : formatDate(user.suspensionUntil)}</td>
-      <td>
-        <button class="admin-action-button danger"
-          data-user-action="unsuspend"
-          data-uid="${escapeHTML(user.uid)}">
-          Cabut
-        </button>
-      </td>
-    </tr>
-  `).join("");
-}
-
-/* =========================================
-   LOAD ADMIN LOGS
-========================================= */
 
 async function loadLogs() {
-  const container = $("#adminLogsList");
-  if (container) {
-    container.innerHTML = `<div class="admin-loading">Memuat aktivitas...</div>`;
-  }
+  const target = $("adminLogsList");
+  if (!target) return;
 
   try {
     const snapshot = await getDocs(
-      query(
-        collection(db, ADMIN_COLLECTIONS.logs),
-        orderBy("createdAt", "desc"),
-        limit(100)
-      )
+      query(collection(db, "adminLogs"), orderBy("createdAt", "desc"), limit(100))
     );
 
-    logsCache = snapshot.docs.map(item => ({
-      id: item.id,
-      ...item.data()
-    }));
+    target.innerHTML = snapshot.docs.map(item => {
+      const log = item.data();
 
-    renderLogs();
-
+      return `
+        <article class="admin-log-item">
+          <strong>${escapeHTML(log.action || "Aktivitas")}</strong>
+          <span>Target: ${escapeHTML(log.targetUid || "-")}</span>
+          <small>Admin: ${escapeHTML(log.adminId || "-")}</small>
+        </article>`;
+    }).join("") || "Belum ada aktivitas.";
   } catch (error) {
-    console.error("Logs error:", error);
-
-    if (container) {
-      container.innerHTML = `
-        <div class="admin-empty">
-          Gagal memuat log aktivitas.
-        </div>
-      `;
-    }
+    console.error(error);
+    target.textContent = "Gagal memuat log.";
   }
 }
 
-function renderLogs() {
-  const container = $("#adminLogsList");
-  if (!container) return;
-
-  if (!logsCache.length) {
-    container.innerHTML = `
-      <div class="admin-empty">Belum ada aktivitas.</div>
-    `;
-    return;
-  }
-
-  container.innerHTML = logsCache.map(log => `
-    <div class="admin-log-item">
-      <div class="admin-log-dot"></div>
-      <div>
-        <strong>${escapeHTML(log.action || "Aktivitas")}</strong>
-        <p>
-          ${escapeHTML(log.adminName || "Administrator")}
-          ${log.targetUid ? ` · Target: ${escapeHTML(log.targetUid)}` : ""}
-        </p>
-        <small>${formatDate(log.createdAt)}</small>
-      </div>
-    </div>
-  `).join("");
-}
-
-/* =========================================
-   ADMIN PAGE NAVIGATION
-========================================= */
-
-const ADMIN_PAGES = {
-  overview: {
-    id: "adminOverviewPage",
-    title: "Overview"
-  },
-  users: {
-    id: "adminUsersPage",
-    title: "Pengguna"
-  },
-  verification: {
-    id: "adminVerificationPage",
-    title: "Verifikasi"
-  },
-  suspensions: {
-    id: "adminSuspensionsPage",
-    title: "Penangguhan"
-  },
-  appeals: {
-    id: "adminAppealsPage",
-    title: "Banding"
-  },
-  logs: {
-    id: "adminLogsPage",
-    title: "Aktivitas"
-  }
-};
-
-function showAdminPage(page) {
-  if (!ADMIN_PAGES[page]) return;
-
-  activeAdminPage = page;
-
-  Object.entries(ADMIN_PAGES).forEach(([key, item]) => {
-    const element = document.getElementById(item.id);
-    if (element) {
-      element.classList.toggle("hidden", key !== page);
-    }
-  });
-
-  document.querySelectorAll(".admin-nav-item").forEach(button => {
-    button.classList.toggle(
-      "active",
-      button.dataset.adminPage === page
-    );
-  });
-
-  if ($("#adminPageTitle")) {
-    $("#adminPageTitle").textContent = ADMIN_PAGES[page].title;
-  }
-
-  if ($("#adminBreadcrumb")) {
-    $("#adminBreadcrumb").textContent =
-      `Dashboard / ${ADMIN_PAGES[page].title}`;
-  }
-
-  if (page === "users" || page === "verification") {
-    renderUsers();
-  }
-
-  if (page === "suspensions") {
-    renderSuspensions();
-  }
-
-  if (page === "appeals") {
-    loadAppeals();
-  }
-
-  if (page === "logs") {
-    loadLogs();
-  }
-}
-
-/* =========================================
-   EVENT HANDLERS
-========================================= */
-
-function bindNavigation() {
-  document.querySelectorAll(".admin-nav-item").forEach(button => {
+function bindEvents() {
+  document.querySelectorAll("[data-admin-page]").forEach(button => {
     button.addEventListener("click", () => {
       showAdminPage(button.dataset.adminPage);
     });
   });
-}
 
-function bindUserActions() {
-  document.addEventListener("click", event => {
+  $("adminUserSearch")?.addEventListener("input", renderUsers);
+  $("adminUserFilter")?.addEventListener("change", renderUsers);
+
+  $("adminUsersTable")?.addEventListener("click", event => {
     const button = event.target.closest("[data-user-action]");
     if (!button) return;
 
-    const action = button.dataset.userAction;
-    const uid = button.dataset.uid;
+    const user = usersCache.find(item => item.uid === button.dataset.uid);
+    if (!user) return;
 
-    if (action === "detail") {
-      showUserDetail(uid);
+    if (button.dataset.userAction === "verified") {
+      toggleVerified(user.uid, !!user.verified);
     }
 
-    if (action === "verify") {
-      toggleVerification(uid);
-    }
-
-    if (action === "suspend") {
-      showSuspendForm(uid);
-    }
-
-    if (action === "unsuspend") {
-      removeSuspension(uid);
+    if (button.dataset.userAction === "suspend") {
+      toggleSuspension(user.uid, !!user.suspended);
     }
   });
-}
 
-function bindAppealActions() {
-  document.addEventListener("click", event => {
+  $("appealsTable")?.addEventListener("click", event => {
     const button = event.target.closest("[data-appeal-action]");
     if (!button) return;
 
-    const action = button.dataset.appealAction;
-    const id = button.dataset.id;
+    reviewAppeal(button.dataset.id, button.dataset.appealAction === "approve"
+      ? "approved"
+      : "rejected");
+  });
 
-    if (action === "detail") {
-      showAppealDetail(id);
-    }
-
-    if (action === "approve") {
-      reviewAppeal(id, "approved");
-    }
-
-    if (action === "reject") {
-      reviewAppeal(id, "rejected");
-    }
+  $("adminRefreshBtn")?.addEventListener("click", refreshAdmin);
+  $("adminLogoutBtn")?.addEventListener("click", async () => {
+    await signOut(auth);
+    location.href = "./index.html";
   });
 }
 
-function bindSearch() {
-  $("#adminUserSearch")?.addEventListener("input", renderUsers);
-  $("#adminUserFilter")?.addEventListener("change", renderUsers);
-
-  $("#verificationSearch")?.addEventListener("input", () => {
-    const search = $("#verificationSearch").value;
-    if ($("#adminUserSearch")) {
-      $("#adminUserSearch").value = search;
-    }
-    renderUsers();
-  });
-}
-
-function bindModal() {
-  $("#adminModalClose")?.addEventListener("click", closeAdminModal);
-
-  $("#adminModal")?.addEventListener("click", event => {
-    if (event.target.id === "adminModal") {
-      closeAdminModal();
-    }
-  });
-}
-
-function bindRefresh() {
-  $("#adminRefreshBtn")?.addEventListener("click", async () => {
-    await loadUsers();
-    await loadAppeals();
-
-    if (activeAdminPage === "logs") {
-      await loadLogs();
-    }
-
-    toast("Dashboard diperbarui.");
-  });
-}
-
-function bindLogout() {
-  $("#adminLogoutBtn")?.addEventListener("click", async () => {
-    if (!confirm("Keluar dari panel administrator?")) return;
-
-    try {
-      await signOut(auth);
-      location.replace("./index.html");
-    } catch (error) {
-      console.error(error);
-      toast("Gagal logout.", "error");
-    }
-  });
-}
-
-/* =========================================
-   INITIALIZATION
-========================================= */
-
-async function initializeAdmin() {
-  bindNavigation();
-  bindUserActions();
-  bindAppealActions();
-  bindSearch();
-  bindModal();
-  bindRefresh();
-  bindLogout();
-
-  const allowed = await checkAdminAccess(adminUser);
-
-  if (!allowed) return;
-
-  renderAdminProfile();
-
-  await Promise.all([
-    loadUsers(),
-    loadAppeals()
-  ]);
-
-  showAdminPage("overview");
+async function refreshAdmin() {
+  try {
+    await Promise.all([loadUsers(), loadAppeals(), loadLogs()]);
+    notify("Data diperbarui");
+  } catch (error) {
+    console.error(error);
+    notify("Gagal memperbarui data");
+  }
 }
 
 onAuthStateChanged(auth, async user => {
   if (!user) {
-    location.replace("./index.html");
+    location.href = "./index.html";
     return;
   }
 
   adminUser = user;
-  await initializeAdmin();
+
+  try {
+    const allowed = await verifyAdmin(user);
+
+    if (!allowed) {
+      document.body.innerHTML = `
+        <main class="admin-denied">
+          <h1>Akses ditolak</h1>
+          <p>Akun ini tidak memiliki izin administrator.</p>
+          <button id="backToLogin">Kembali ke login</button>
+        </main>
+      `;
+
+      $("backToLogin").onclick = async () => {
+        await signOut(auth);
+        location.href = "./index.html";
+      };
+
+      return;
+    }
+
+    bindEvents();
+    await refreshAdmin();
+    showAdminPage("overview");
+
+  } catch (error) {
+    console.error(error);
+    notify("Gagal memverifikasi akses administrator");
+  }
 });
