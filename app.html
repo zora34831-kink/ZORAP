@@ -3,391 +3,466 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0d0b14">
-  <title>ZORAP — Messaging</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#09090f">
+  <title>ZORAP — Messages</title>
+
+  <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./css/style.css">
   <link rel="stylesheet" href="./css/chat.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 
-<body>
-  <div class="app-shell">
+<body class="app-body">
+
+  <!-- SPLASH -->
+  <div id="appSplash" class="app-splash">
+    <div class="splash-logo">Z</div>
+    <div class="splash-name">ZORAP</div>
+    <div class="splash-loader"><span></span></div>
+    <small>YOUR SPACE. YOUR PEOPLE.</small>
+  </div>
+
+  <!-- APPLICATION -->
+  <div class="app-shell" id="appShell" hidden>
 
     <!-- SIDEBAR -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-logo">Z</div>
-        <div class="brand-name">ZORAP</div>
-      </div>
+    <aside class="app-sidebar">
 
-      <div class="sidebar-profile">
-        <img id="myAvatar" src="https://ui-avatars.com/api/?name=Z&background=292039&color=fff" alt="Avatar">
-        <div class="profile-info">
-          <strong id="myName">Memuat...</strong>
-          <span id="myUsername">@username</span>
-        </div>
-        <button class="icon-button" id="openMyProfile" title="Profil">•••</button>
-      </div>
+      <a href="./app.html" class="brand-logo">
+        <span class="brand-symbol">Z</span>
+        <span>ZORAP</span>
+      </a>
 
-      <nav class="sidebar-nav">
+      <nav class="sidebar-navigation">
+
         <button class="nav-item active" data-page="chats">
-          <span class="nav-symbol">▤</span>
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.7-3.4A7.5 7.5 0 1 1 20 11.5Z"/></svg>
+          </span>
           <span>Chats</span>
+          <span class="nav-count" id="totalUnread">0</span>
         </button>
+
         <button class="nav-item" data-page="updates">
-          <span class="nav-symbol">◉</span>
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/></svg>
+          </span>
           <span>Updates</span>
         </button>
+
         <button class="nav-item" data-page="groups">
-          <span class="nav-symbol">▧</span>
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 5"/></svg>
+          </span>
           <span>Groups</span>
         </button>
+
         <button class="nav-item" data-page="contacts">
-          <span class="nav-symbol">♙</span>
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          </span>
           <span>Contacts</span>
         </button>
+
         <button class="nav-item" data-page="calls">
-          <span class="nav-symbol">⌕</span>
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><path d="M5 3h4l2 5-3 2a15 15 0 0 0 6 6l2-3 5 2v4c0 1-1 2-2 2A17 17 0 0 1 3 5c0-1 1-2 2-2Z"/></svg>
+          </span>
           <span>Calls</span>
         </button>
-        <button class="nav-item" data-page="settings">
-          <span class="nav-symbol">⚙</span>
-          <span>Settings</span>
-        </button>
+
       </nav>
 
-      <div class="sidebar-footer">
-        <span class="online-indicator"></span>
-        <span>Connected to ZORAP</span>
+      <div class="sidebar-bottom">
+
+        <button class="nav-item" data-page="settings">
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.5 2.6-1.7-.7a8 8 0 0 1-2 .9l-.3 1.8h-3l-.3-1.8a8 8 0 0 1-2-.9l-1.7.7-1.5-2.6 1.4-1.1a8 8 0 0 1 0-2l-1.4-1.1 1.5-2.6 1.7.7a8 8 0 0 1 2-.9l.3-1.8h3l.3 1.8a8 8 0 0 1 2 .9l1.7-.7 1.5 2.6-1.4 1.1a8 8 0 0 1 0 2Z"/></svg>
+          </span>
+          <span>Settings</span>
+        </button>
+
+        <button class="profile-shortcut" id="profileShortcut">
+          <img src="./assets/default-avatar.svg" id="sidebarAvatar" alt="Profile">
+          <span>
+            <strong id="sidebarName">Loading...</strong>
+            <small id="sidebarUsername">@username</small>
+          </span>
+          <span class="profile-menu-icon">•••</span>
+        </button>
+
       </div>
     </aside>
 
     <!-- MAIN -->
-    <main class="main-content">
-      <header class="topbar">
-        <div>
-          <h1 id="pageTitle">Chats</h1>
-          <p class="topbar-subtitle">Your conversations, all in one place.</p>
+    <main class="app-main">
+
+      <!-- TOPBAR -->
+      <header class="app-topbar">
+        <div class="topbar-title">
+          <span class="eyebrow">ZORAP WORKSPACE</span>
+          <h1 id="pageHeading">Messages</h1>
         </div>
 
         <div class="topbar-actions">
-          <button class="icon-button" id="globalSearchBtn" title="Search">⌕</button>
-          <button class="icon-button" id="themeToggle" title="Ganti tema">
-            <span id="themeIcon">☾</span>
+          <button class="icon-button" id="globalSearchBtn" aria-label="Search">
+            <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
           </button>
-          <button class="primary-button" id="newChatBtn">New chat</button>
+
+          <button class="icon-button" id="themeToggle" aria-label="Toggle theme">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          </button>
         </div>
       </header>
 
-      <!-- CHATS PAGE -->
-      <section class="page-content" id="welcomePanel">
-        <div class="chat-layout">
+      <!-- PAGES -->
+      <section class="app-content">
 
-          <section class="chat-list-panel">
-            <div class="panel-heading">
-              <div>
-                <h2>Messages</h2>
-                <p>Your recent conversations</p>
-              </div>
-              <button class="icon-button" id="moreMenuBtn">•••</button>
+        <!-- CHATS -->
+        <section class="app-page active" id="page-chats">
+
+          <div class="section-toolbar">
+            <div>
+              <h2>All conversations</h2>
+              <p>Your recent messages and connections</p>
             </div>
 
-            <div class="search-box">
-              <span>⌕</span>
-              <input id="chatSearch" type="search" placeholder="Search conversations...">
-            </div>
-
-            <div class="chat-filter">
-              <button class="filter-chip active" data-filter="all">All</button>
-              <button class="filter-chip" data-filter="unread">Unread</button>
-              <button class="filter-chip" data-filter="groups">Groups</button>
-            </div>
-
-            <div class="chat-list" id="chatList">
-              <div class="empty-state">
-                <div class="empty-state-icon">Z</div>
-                <h3>No conversations yet</h3>
-                <p>Start a conversation with someone.</p>
-                <button class="primary-button" id="emptyNewChatBtn">Start chatting</button>
-              </div>
-            </div>
-          </section>
-
-          <!-- ACTIVE CHAT -->
-          <section class="chat-view hidden" id="chatView">
-            <header class="conversation-header" id="conversationHeader">
-              <button class="icon-button mobile-back-button" id="mobileBackBtn">←</button>
-              <div class="conversation-avatar">
-                <img id="conversationAvatar" src="https://ui-avatars.com/api/?name=Z&background=292039&color=fff" alt="">
-              </div>
-              <div class="conversation-user">
-                <strong id="conversationName">Conversation</strong>
-                <span id="conversationStatus">Offline</span>
-              </div>
-              <div class="conversation-actions">
-                <button class="icon-button" id="chatSearchBtn" title="Search messages">⌕</button>
-                <button class="icon-button" id="conversationMenuBtn" title="More">•••</button>
-              </div>
-            </header>
-
-            <div class="message-history" id="messageHistory">
-              <div class="message-empty">
-                <span class="message-empty-logo">Z</span>
-                <p>Send a message to start the conversation.</p>
-              </div>
-            </div>
-
-            <div class="typing-indicator hidden" id="typingIndicator">
-              <span></span><span></span><span></span>
-              <small>Typing...</small>
-            </div>
-
-            <form class="message-composer" id="messageForm">
-              <button type="button" class="icon-button" id="attachFileBtn" title="Attach">＋</button>
-              <input id="messageInput" type="text" placeholder="Write a message..." autocomplete="off">
-              <button type="button" class="icon-button" id="emojiBtn" title="Emoji">☺</button>
-              <button type="submit" class="send-button" id="sendMessageBtn" title="Send">
-                <span>Send</span>
-              </button>
-            </form>
-          </section>
-
-        </div>
-      </section>
-
-      <!-- UPDATES PAGE -->
-      <section class="page-content hidden" id="updatesPage">
-        <div class="section-heading">
-          <div>
-            <h2>Updates</h2>
-            <p>Share moments with your contacts.</p>
+            <button class="primary-small" id="newChatBtn">
+              <span>+</span> New chat
+            </button>
           </div>
-          <button class="primary-button" id="createStatusBtn">Create status</button>
-        </div>
 
-        <div class="status-own-card" id="myStatusCard">
-          <div class="status-avatar">
-            <img id="statusMyAvatar" src="https://ui-avatars.com/api/?name=Z&background=292039&color=fff" alt="">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+            <input id="chatSearch" type="search" placeholder="Search conversations...">
+            <kbd>⌕</kbd>
           </div>
-          <div>
-            <strong>My status</strong>
-            <p>Share a photo or video</p>
-          </div>
-          <button class="icon-button" id="addStatusBtn">＋</button>
-        </div>
 
-        <div class="content-card">
-          <h3>Recent updates</h3>
-          <div class="status-list" id="statusList">
+          <div class="chat-filters">
+            <button class="filter-chip active" data-filter="all">All</button>
+            <button class="filter-chip" data-filter="unread">Unread</button>
+            <button class="filter-chip" data-filter="personal">Personal</button>
+            <button class="filter-chip" data-filter="group">Groups</button>
+          </div>
+
+          <div id="chatList" class="chat-list">
+            <div class="loading-state">Loading conversations...</div>
+          </div>
+
+        </section>
+
+        <!-- UPDATES -->
+        <section class="app-page" id="page-updates">
+
+          <div class="section-toolbar">
+            <div>
+              <h2>Updates</h2>
+              <p>Moments from your connections</p>
+            </div>
+
+            <button class="primary-small" id="addStatusBtn">
+              + Add status
+            </button>
+          </div>
+
+          <div class="status-create-card" id="myStatusCard">
+            <img src="./assets/default-avatar.svg" id="statusMyAvatar" alt="">
+            <div>
+              <strong>My status</strong>
+              <small>Share something with your contacts</small>
+            </div>
+            <span class="status-add">+</span>
+          </div>
+
+          <div class="section-label">RECENT UPDATES</div>
+          <div id="statusList" class="status-list">
+            <div class="empty-state">No recent updates.</div>
+          </div>
+
+        </section>
+
+        <!-- GROUPS -->
+        <section class="app-page" id="page-groups">
+
+          <div class="section-toolbar">
+            <div>
+              <h2>Your groups</h2>
+              <p>Communities and group conversations</p>
+            </div>
+
+            <button class="primary-small" id="createGroupBtn">
+              + Create group
+            </button>
+          </div>
+
+          <div class="search-box">
+            <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+            <input id="groupSearch" type="search" placeholder="Search groups...">
+          </div>
+
+          <div id="groupList" class="group-list">
+            <div class="loading-state">Loading groups...</div>
+          </div>
+
+        </section>
+
+        <!-- CONTACTS -->
+        <section class="app-page" id="page-contacts">
+
+          <div class="section-toolbar">
+            <div>
+              <h2>Contacts</h2>
+              <p>Find and connect with people</p>
+            </div>
+          </div>
+
+          <div class="search-box">
+            <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+            <input id="contactSearch" type="search" placeholder="Search by username...">
+            <button id="contactSearchBtn">Search</button>
+          </div>
+
+          <div id="contactResults" class="contact-list">
+            <div class="empty-state">Search for a username to find people.</div>
+          </div>
+
+        </section>
+
+        <!-- CALLS -->
+        <section class="app-page" id="page-calls">
+
+          <div class="section-toolbar">
+            <div>
+              <h2>Calls</h2>
+              <p>Your calling activity</p>
+            </div>
+          </div>
+
+          <div id="callHistory" class="call-list">
             <div class="empty-state">
-              <h3>No updates yet</h3>
-              <p>Status from your contacts will appear here.</p>
+              Call history will appear here.
             </div>
           </div>
-        </div>
 
-        <div class="status-viewer hidden" id="statusViewer">
-          <button class="icon-button status-viewer-close" id="closeStatusViewer">×</button>
-          <div id="statusViewerContent"></div>
-          <div id="statusViewerInfo"></div>
-        </div>
-      </section>
+        </section>
 
-      <!-- GROUPS PAGE -->
-      <section class="page-content hidden" id="groupsPage">
-        <div class="section-heading">
-          <div>
-            <h2>Groups</h2>
-            <p>Connect with multiple people.</p>
-          </div>
-          <button class="primary-button" id="createGroupBtn">Create group</button>
-        </div>
+        <!-- SETTINGS -->
+        <section class="app-page" id="page-settings">
 
-        <div class="content-card">
-          <div class="group-list" id="groupsList">
-            <div class="empty-state">
-              <h3>No groups yet</h3>
-              <p>Create a group to start chatting together.</p>
+          <div class="section-toolbar">
+            <div>
+              <h2>Settings</h2>
+              <p>Manage your account and preferences</p>
             </div>
           </div>
-        </div>
-      </section>
 
-      <!-- CONTACTS PAGE -->
-      <section class="page-content hidden" id="contactsPage">
-        <div class="section-heading">
-          <div>
-            <h2>Contacts</h2>
-            <p>Find and manage your contacts.</p>
-          </div>
-          <button class="primary-button" id="addContactBtn">Add contact</button>
-        </div>
-
-        <div class="search-box">
-          <span>⌕</span>
-          <input id="contactSearchInput" type="search" placeholder="Search contacts...">
-          <button class="icon-button" id="contactSearchBtn">Search</button>
-        </div>
-
-        <div id="contactSearchResults"></div>
-
-        <div class="content-card">
-          <div class="contacts-list" id="contactsList">
-            <div class="empty-state">
-              <h3>No contacts saved</h3>
-              <p>Add someone using their ZORAP username.</p>
+          <div class="settings-profile-card" id="settingsProfileCard">
+            <img src="./assets/default-avatar.svg" id="settingsAvatar" alt="">
+            <div>
+              <strong id="settingsName">Loading...</strong>
+              <small id="settingsUsername">@username</small>
             </div>
+            <button id="editProfileBtn">Edit</button>
           </div>
-        </div>
-      </section>
 
-      <!-- CALLS PAGE -->
-      <section class="page-content hidden" id="callsPage">
-        <div class="section-heading">
-          <div>
-            <h2>Calls</h2>
-            <p>Your recent call activity.</p>
+          <div class="settings-grid">
+
+            <button class="settings-item" data-setting="account">
+              <span class="settings-icon">01</span>
+              <span><strong>Account</strong><small>Personal information and security</small></span>
+              <span>›</span>
+            </button>
+
+            <button class="settings-item" data-setting="privacy">
+              <span class="settings-icon">02</span>
+              <span><strong>Privacy</strong><small>Last seen and read receipts</small></span>
+              <span>›</span>
+            </button>
+
+            <button class="settings-item" data-setting="chats">
+              <span class="settings-icon">03</span>
+              <span><strong>Chats</strong><small>Conversation preferences</small></span>
+              <span>›</span>
+            </button>
+
+            <button class="settings-item" data-setting="notifications">
+              <span class="settings-icon">04</span>
+              <span><strong>Notifications</strong><small>Manage your alerts</small></span>
+              <span>›</span>
+            </button>
+
+            <button class="settings-item" data-setting="appearance">
+              <span class="settings-icon">05</span>
+              <span><strong>Appearance</strong><small>Theme and interface</small></span>
+              <span>›</span>
+            </button>
+
+            <button class="settings-item" data-setting="storage">
+              <span class="settings-icon">06</span>
+              <span><strong>Storage & data</strong><small>Data usage and storage</small></span>
+              <span>›</span>
+            </button>
+
+            <button class="settings-item" data-setting="language">
+              <span class="settings-icon">07</span>
+              <span><strong>Language</strong><small>Application language</small></span>
+              <span>›</span>
+            </button>
+
+            <button class="settings-item" data-setting="help">
+              <span class="settings-icon">08</span>
+              <span><strong>Help</strong><small>Support and information</small></span>
+              <span>›</span>
+            </button>
+
           </div>
-        </div>
-        <div class="content-card">
-          <div class="empty-state">
-            <h3>Call history</h3>
-            <p>Your call history will appear here when calling is connected.</p>
-          </div>
-        </div>
-      </section>
 
-      <!-- SETTINGS PAGE -->
-      <section class="page-content hidden" id="settingsPage">
-        <div class="section-heading">
-          <div>
-            <h2>Settings</h2>
-            <p>Manage your ZORAP experience.</p>
-          </div>
-        </div>
-
-        <div class="settings-profile-card" id="settingsProfile">
-          <img id="settingsAvatar" src="https://ui-avatars.com/api/?name=Z&background=292039&color=fff" alt="">
-          <div>
-            <strong id="settingsName">Your name</strong>
-            <p id="settingsUsername">@username</p>
-          </div>
-          <button class="icon-button" id="openSettingsProfile">→</button>
-        </div>
-
-        <div class="settings-list">
-          <button class="settings-item" data-setting="account">
-            <span class="settings-item-icon">◉</span>
-            <span><strong>Account</strong><small>Profile and account information</small></span>
-            <span>›</span>
+          <button class="logout-button" id="logoutBtn">
+            Sign out of ZORAP
           </button>
 
-          <button class="settings-item" data-setting="privacy">
-            <span class="settings-item-icon">◇</span>
-            <span><strong>Privacy</strong><small>Last seen, online and read receipts</small></span>
-            <span>›</span>
-          </button>
+        </section>
 
-          <button class="settings-item" data-setting="chats">
-            <span class="settings-item-icon">▤</span>
-            <span><strong>Chats</strong><small>Chat preferences</small></span>
-            <span>›</span>
-          </button>
-
-          <button class="settings-item" data-setting="notifications">
-            <span class="settings-item-icon">♧</span>
-            <span><strong>Notifications</strong><small>Message and group alerts</small></span>
-            <span>›</span>
-          </button>
-
-          <button class="settings-item" data-setting="appearance">
-            <span class="settings-item-icon">◐</span>
-            <span><strong>Appearance</strong><small>Dark, light and system theme</small></span>
-            <span>›</span>
-          </button>
-
-          <button class="settings-item" data-setting="storage">
-            <span class="settings-item-icon">▦</span>
-            <span><strong>Storage and data</strong><small>Media and data usage</small></span>
-            <span>›</span>
-          </button>
-
-          <button class="settings-item" data-setting="language">
-            <span class="settings-item-icon">文</span>
-            <span><strong>Language</strong><small>Application language</small></span>
-            <span>›</span>
-          </button>
-
-          <button class="settings-item" data-setting="help">
-            <span class="settings-item-icon">?</span>
-            <span><strong>Help</strong><small>Support and information</small></span>
-            <span>›</span>
-          </button>
-
-          <button class="settings-item" data-setting="about">
-            <span class="settings-item-icon">ⓘ</span>
-            <span><strong>About ZORAP</strong><small>Version and application details</small></span>
-            <span>›</span>
-          </button>
-        </div>
-
-        <button class="danger-button" id="logoutBtn">Log out</button>
       </section>
 
     </main>
 
+    <!-- CHAT VIEW -->
+    <section class="conversation-panel" id="conversationPanel">
+
+      <div class="conversation-empty" id="conversationEmpty">
+        <div class="empty-brand">Z</div>
+        <h2>Your conversations start here.</h2>
+        <p>Select a chat or start a new conversation.</p>
+      </div>
+
+      <div class="conversation-view" id="conversationView" hidden>
+
+        <header class="conversation-header">
+
+          <button class="back-button" id="backToChats" aria-label="Back">
+            ‹
+          </button>
+
+          <img src="./assets/default-avatar.svg" id="conversationAvatar" alt="">
+
+          <div class="conversation-user">
+            <strong id="conversationName">Contact</strong>
+            <small id="conversationPresence">Offline</small>
+          </div>
+
+          <div class="conversation-actions">
+            <button class="icon-button" id="conversationSearchBtn" aria-label="Search messages">
+              <svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+            </button>
+
+            <button class="icon-button" id="conversationMoreBtn" aria-label="More options">
+              <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+            </button>
+          </div>
+
+        </header>
+
+        <div class="message-search-panel" id="messageSearchPanel" hidden>
+          <input id="messageSearchInput" placeholder="Find a message...">
+          <button id="closeMessageSearch">Close</button>
+        </div>
+
+        <div class="message-area" id="messageArea">
+          <div class="message-list" id="messageList"></div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator" hidden>
+          Someone is typing...
+        </div>
+
+        <form class="message-composer" id="messageForm">
+
+          <button type="button" class="composer-button" id="attachmentBtn" aria-label="Attach file">
+            +
+          </button>
+
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Write a message..."
+            autocomplete="off"
+            maxlength="10000"
+          >
+
+          <button type="button" class="composer-button" id="emojiBtn" aria-label="Emoji">
+            Aa
+          </button>
+
+          <button type="submit" class="send-button" id="sendMessageBtn" aria-label="Send message">
+            <svg viewBox="0 0 24 24"><path d="m4 4 17 8-17 8 3-8-3-8Zm3 8h14"/></svg>
+          </button>
+
+        </form>
+
+      </div>
+
+    </section>
+
     <!-- MOBILE NAVIGATION -->
-    <nav class="bottom-navigation">
-      <button class="nav-item active" data-page="chats">
-        <span class="nav-symbol">▤</span>
+    <nav class="mobile-navigation">
+
+      <button class="mobile-nav-item active" data-page="chats">
+        <span>01</span>
         <small>Chats</small>
       </button>
-      <button class="nav-item" data-page="updates">
-        <span class="nav-symbol">◉</span>
+
+      <button class="mobile-nav-item" data-page="updates">
+        <span>02</span>
         <small>Updates</small>
       </button>
-      <button class="nav-item" data-page="groups">
-        <span class="nav-symbol">▧</span>
+
+      <button class="mobile-nav-item" data-page="groups">
+        <span>03</span>
         <small>Groups</small>
       </button>
-      <button class="nav-item" data-page="contacts">
-        <span class="nav-symbol">♙</span>
+
+      <button class="mobile-nav-item" data-page="contacts">
+        <span>04</span>
         <small>Contacts</small>
       </button>
-      <button class="nav-item" data-page="settings">
-        <span class="nav-symbol">⚙</span>
+
+      <button class="mobile-nav-item" data-page="settings">
+        <span>05</span>
         <small>Settings</small>
       </button>
+
     </nav>
 
   </div>
 
   <!-- GLOBAL MODAL -->
-  <div class="modal-overlay hidden" id="modalOverlay">
-    <div class="modal-content" id="modalContent">
-      <button class="modal-close" id="modalCloseBtn">×</button>
-      <div id="modalBody"></div>
+  <div class="app-modal" id="appModal" hidden>
+    <div class="modal-backdrop" id="modalBackdrop"></div>
+
+    <div class="modal-card" id="modalCard">
+      <button class="modal-close" id="modalClose">×</button>
+      <div id="modalContent"></div>
     </div>
   </div>
 
   <!-- TOAST -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- FILE INPUT -->
-  <input type="file" id="statusFileInput" accept="image/*,video/*" hidden>
-  <input type="file" id="chatFileInput" hidden>
+  <!-- SCRIPTS -->
+  <script type="module" src="./js/app.js"></script>
 
-  <!-- APP MODULES -->
-  <script type="module">
-    import "./js/app.js";
-    import "./js/chat.js";
-    import "./js/groups.js";
-    import "./js/contacts.js";
-    import "./js/status.js";
-    import "./js/settings.js";
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(console.error);
+      });
+    }
   </script>
+
 </body>
 </html>
