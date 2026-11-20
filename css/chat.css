@@ -1628,3 +1628,172 @@ input:focus-visible {
 .hidden {
   display: none !important;
 }
+
+
+.status-list {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 15px 3px;
+}
+
+.status-user {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.status-avatar {
+  width: 61px;
+  height: 61px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
+}
+
+.status-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.status-avatar.status-unseen {
+  border: 2px solid var(--accent);
+  padding: 3px;
+}
+
+.status-avatar.status-seen {
+  border: 2px solid var(--muted);
+  padding: 3px;
+}
+
+.status-user-name {
+  font-size: 11px;
+  max-width: 75px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #08080c;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+.status-progress {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+}
+
+.status-progress-segment {
+  flex: 1;
+  height: 3px;
+  background: #555;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.status-progress-fill {
+  height: 100%;
+  background: white;
+}
+
+@keyframes statusProgress {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.status-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 0;
+  gap: 8px;
+}
+
+.status-viewer-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-viewer-user span {
+  display: block;
+  font-size: 11px;
+  opacity: .65;
+  margin-top: 3px;
+}
+
+.status-viewer-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.status-viewer-actions button {
+  border: 0;
+  background: #24242b;
+  color: white;
+  border-radius: 9px;
+  padding: 8px 11px;
+}
+
+.status-media {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.status-media img,
+.status-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.status-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: #ffffff22;
+  color: white;
+  width: 38px;
+  height: 55px;
+  font-size: 30px;
+  border-radius: 10px;
+  z-index: 2;
+}
+
+.status-nav.previous {
+  left: 12px;
+}
+
+.status-nav.next {
+  right: 12px;
+}
+
+.status-caption {
+  text-align: center;
+  padding: 15px;
+  font-size: 14px;
+}
