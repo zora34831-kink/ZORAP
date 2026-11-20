@@ -85,3 +85,22 @@ body.light-mode .auth-content {
 body.light-mode .auth-heading p {
   color: #777386;
 }
+
+.splash-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.auth-form button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+
+.auth-message.success {
+  color: #50d6a0;
+}
+
+.auth-message.error {
+  color: #ff647c;
+}
