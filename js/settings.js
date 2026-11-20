@@ -2,643 +2,194 @@
 import { auth, db } from "./firebase.js";
 
 import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  serverTimestamp
+  doc, getDoc, updateDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 
 import {
-  updateProfile,
-  sendPasswordResetEmail
+  updateProfile, updateEmail, updatePassword,
+  reauthenticateWithCredential, EmailAuthProvider
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
 
-const $ = selector => document.querySelector(selector);
+import { getCurrentUser, getCurrentProfile, showToast, applyTheme } from "./app.js";
 
-let currentUser = null;
-let currentProfile = {};
-let settings = {
-  theme: "dark",
-  language: "id",
-  lastSeen: "everyone",
-  onlineStatus: "everyone",
-  readReceipts: true,
-  notifications: true,
-  messagePreview: true,
-  enterToSend: true,
-  mediaAutoDownload: false
-};
-
-const settingsRef = () => doc(db, "users", currentUser.uid);
-
-function notify(message) {
-  if (window.zorapToast) {
-    window.zorapToast(message);
-  } else {
-    alert(message);
-  }
-}
+const settingsPage = document.getElementById("page-settings");
 
 function escapeHTML(value = "") {
-  return String(value).replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[char]);
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#039;"
+  })[c]);
 }
 
-window.addEventListener("zorap:ready", async event => {
-  currentUser = auth.currentUser;
-  currentProfile = event.detail?.profile || {};
+function renderSettings() {
+  if (!settingsPage) return;
 
-  if (!currentUser) return;
+  const user = getCurrentUser();
+  const profile = getCurrentProfile() || {};
 
-  await loadSettings();
-  updateSettingsProfile();
-  bindSettingsEvents();
-});
+  if (!user) return;
 
-async function loadSettings() {
-  try {
-    const snapshot = await getDoc(settingsRef());
+  settingsPage.innerHTML = `
+    <div class="settings-layout">
+      <header class="settings-heading">
+        <div>
+          <span class="eyebrow">PERSONALIZATION</span>
+          <h1>Pengaturan</h1>
+          <p>Atur pengalaman ZORAP lu.</p>
+        </div>
+      </header>
 
-    if (snapshot.exists()) {
-      const data = snapshot.data();
+      <section class="settings-card">
+        <div class="settings-profile">
+          <img src="${escapeHTML(profile.photoURL || "./assets/default-avatar.svg")}" alt="">
+          <div>
+            <h3>${escapeHTML(profile.name || user.displayName || "Pengguna")}</h3>
+            <p>@${escapeHTML(profile.username || "")}</p>
+          </div>
+        </div>
+        <button class="secondary-button" id="editProfileBtn">Edit profil</button>
+      </section>
 
-      settings = {
-        ...settings,
-        ...(data.settings || {})
-      };
-    }
+      <section class="settings-card">
+        <h3>Tampilan</h3>
+        <p>Pilih tema aplikasi.</p>
+        <div class="settings-options">
+          <button data-theme="dark">Dark</button>
+          <button data-theme="light">Light</button>
+          <button data-theme="system">System</button>
+        </div>
+      </section>
 
-    applyTheme(settings.theme);
-  } catch (error) {
-    console.error("Load settings:", error);
-  }
-}
+      <section class="settings-card">
+        <h3>Privasi</h3>
+        <label class="settings-toggle">
+          <span>Tampilkan status online</span>
+          <input type="checkbox" id="onlineVisibility" checked>
+        </label>
+        <label class="settings-toggle">
+          <span>Konfirmasi telah dibaca</span>
+          <input type="checkbox" id="readReceipts" checked>
+        </label>
+      </section>
 
-async function saveSettings() {
-  if (!currentUser) return;
-
-  try {
-    await setDoc(settingsRef(), {
-      settings,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    return true;
-  } catch (error) {
-    console.error("Save settings:", error);
-    notify("Pengaturan gagal disimpan.");
-    return false;
-  }
-}
-
-// =====================================
-// PROFILE
-// =====================================
-
-function updateSettingsProfile() {
-  const name = currentProfile.name ||
-    currentUser.displayName ||
-    "Pengguna";
-
-  const username = currentProfile.username || "";
-
-  const avatar = currentProfile.photoURL ||
-    currentUser.photoURL ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=292039&color=fff`;
-
-  if ($("#settingsName")) $("#settingsName").textContent = name;
-  if ($("#settingsUsername")) {
-    $("#settingsUsername").textContent = "@" + username;
-  }
-
-  if ($("#settingsAvatar")) $("#settingsAvatar").src = avatar;
-}
-
-function openProfileSettings() {
-  const name = currentProfile.name ||
-    currentUser?.displayName ||
-    "";
-
-  const username = currentProfile.username || "";
-
-  openModal(`
-    <div class="modal-heading">
-      <h2>Profil akun</h2>
-      <p>Kelola informasi profil ZORAP kamu.</p>
+      <section class="settings-card">
+        <h3>Akun</h3>
+        <button class="settings-action" id="changePasswordBtn">Ubah password</button>
+        <button class="settings-action" id="aboutBtn">Tentang ZORAP</button>
+      </section>
     </div>
-
-    <label>Nama tampilan</label>
-    <input id="profileNameInput" value="${escapeHTML(name)}" maxlength="40">
-
-    <label>Username</label>
-    <input value="@${escapeHTML(username)}" disabled>
-
-    <label>Email</label>
-    <input value="${escapeHTML(currentUser?.email || "Tidak tersedia")}" disabled>
-
-    <div class="modal-actions">
-      <button class="secondary-button" id="profileCancel">Batal</button>
-      <button class="primary-button" id="profileSave">Simpan</button>
-    </div>
-  `);
-
-  $("#profileCancel").onclick = closeModal;
-  $("#profileSave").onclick = saveProfile;
-}
-
-async function saveProfile() {
-  const name = $("#profileNameInput")?.value.trim();
-
-  if (!name || name.length < 2) {
-    notify("Nama minimal 2 karakter.");
-    return;
-  }
-
-  try {
-    await updateProfile(currentUser, {
-      displayName: name
-    });
-
-    await updateDoc(settingsRef(), {
-      name,
-      updatedAt: serverTimestamp()
-    });
-
-    currentProfile.name = name;
-
-    updateSettingsProfile();
-
-    if ($("#myName")) $("#myName").textContent = name;
-
-    closeModal();
-    notify("Profil berhasil diperbarui.");
-
-    window.dispatchEvent(new CustomEvent("zorap:profile-updated", {
-      detail: { profile: currentProfile }
-    }));
-  } catch (error) {
-    console.error(error);
-    notify("Gagal memperbarui profil.");
-  }
-}
-
-// =====================================
-// MODAL
-// =====================================
-
-function openModal(html) {
-  const overlay = $("#modalOverlay");
-  const content = $("#modalContent");
-
-  if (!overlay || !content) return;
-
-  content.innerHTML = `
-    <button class="modal-close" id="settingsModalClose">×</button>
-    <div id="settingsModalBody">${html}</div>
   `;
 
-  overlay.classList.remove("hidden");
-
-  $("#settingsModalClose").onclick = closeModal;
-
-  overlay.onclick = event => {
-    if (event.target === overlay) closeModal();
-  };
-}
-
-function closeModal() {
-  $("#modalOverlay")?.classList.add("hidden");
-
-  const content = $("#modalContent");
-  if (content) content.innerHTML = "";
-}
-
-// =====================================
-// APPEARANCE
-// =====================================
-
-function applyTheme(theme) {
-  settings.theme = theme;
-
-  const prefersLight = window.matchMedia?.(
-    "(prefers-color-scheme: light)"
-  ).matches;
-
-  const light = theme === "light" ||
-    (theme === "system" && prefersLight);
-
-  document.body.classList.toggle("light-mode", light);
-
-  const icon = $("#themeIcon");
-  if (icon) icon.textContent = light ? "☀" : "☾";
-}
-
-function openAppearanceSettings() {
-  openModal(`
-    <div class="modal-heading">
-      <h2>Appearance</h2>
-      <p>Pilih tampilan aplikasi kamu.</p>
-    </div>
-
-    <div class="theme-options">
-      <button class="theme-option" data-theme="dark">
-        <span class="theme-preview dark-preview"></span>
-        <strong>Dark</strong>
-        <small>Dark interface</small>
-      </button>
-
-      <button class="theme-option" data-theme="light">
-        <span class="theme-preview light-preview"></span>
-        <strong>Light</strong>
-        <small>Bright interface</small>
-      </button>
-
-      <button class="theme-option" data-theme="system">
-        <span class="theme-preview system-preview"></span>
-        <strong>System</strong>
-        <small>Follow device</small>
-      </button>
-    </div>
-  `);
-
-  document.querySelectorAll("[data-theme]").forEach(button => {
-    button.classList.toggle(
-      "selected",
-      button.dataset.theme === settings.theme
-    );
-
-    button.onclick = async () => {
-      applyTheme(button.dataset.theme);
-      await saveSettings();
-      closeModal();
-      notify("Tema berhasil diperbarui.");
+  settingsPage.querySelectorAll("[data-theme]").forEach(button => {
+    button.onclick = () => {
+      const theme = button.dataset.theme;
+      applyTheme(theme);
+      localStorage.setItem("zorap-theme", theme);
+      showToast("Tema berhasil diubah", "success");
     };
   });
-}
 
-// =====================================
-// PRIVACY
-// =====================================
-
-function openPrivacySettings() {
-  openModal(`
-    <div class="modal-heading">
-      <h2>Privacy</h2>
-      <p>Atur informasi yang bisa dilihat orang lain.</p>
-    </div>
-
-    <label>Last seen</label>
-    <select id="privacyLastSeen">
-      <option value="everyone">Everyone</option>
-      <option value="contacts">My contacts</option>
-      <option value="nobody">Nobody</option>
-    </select>
-
-    <label>Online status</label>
-    <select id="privacyOnline">
-      <option value="everyone">Everyone</option>
-      <option value="same">Same as last seen</option>
-    </select>
-
-    <label class="setting-toggle">
-      <span>
-        <strong>Read receipts</strong>
-        <small>Izinkan tanda pesan dibaca.</small>
-      </span>
-      <input type="checkbox" id="privacyReadReceipts">
-    </label>
-
-    <div class="modal-actions">
-      <button class="primary-button" id="savePrivacy">Simpan</button>
-    </div>
-  `);
-
-  $("#privacyLastSeen").value = settings.lastSeen;
-  $("#privacyOnline").value = settings.onlineStatus;
-  $("#privacyReadReceipts").checked = settings.readReceipts;
-
-  $("#savePrivacy").onclick = async () => {
-    settings.lastSeen = $("#privacyLastSeen").value;
-    settings.onlineStatus = $("#privacyOnline").value;
-    settings.readReceipts = $("#privacyReadReceipts").checked;
-
-    await saveSettings();
-    closeModal();
-    notify("Pengaturan privasi disimpan.");
+  document.getElementById("editProfileBtn").onclick = editProfile;
+  document.getElementById("changePasswordBtn").onclick = changePassword;
+  document.getElementById("aboutBtn").onclick = () => {
+    alert("ZORAP\nAplikasi komunikasi digital.");
   };
+
+  const onlineInput = document.getElementById("onlineVisibility");
+  const readInput = document.getElementById("readReceipts");
+
+  onlineInput.checked = profile.settings?.showOnline !== false;
+  readInput.checked = profile.settings?.readReceipts !== false;
+
+  onlineInput.onchange = () => saveSetting("showOnline", onlineInput.checked);
+  readInput.onchange = () => saveSetting("readReceipts", readInput.checked);
 }
 
-// =====================================
-// CHAT SETTINGS
-// =====================================
+async function saveSetting(key, value) {
+  const user = getCurrentUser();
+  if (!user) return;
 
-function openChatSettings() {
-  openModal(`
-    <div class="modal-heading">
-      <h2>Chats</h2>
-      <p>Atur cara kamu menggunakan chat.</p>
-    </div>
+  try {
+    await updateDoc(doc(db, "users", user.uid), {
+      [`settings.${key}`]: value,
+      updatedAt: serverTimestamp()
+    });
 
-    <label class="setting-toggle">
-      <span>
-        <strong>Enter untuk mengirim</strong>
-        <small>Tekan Enter untuk mengirim pesan.</small>
-      </span>
-      <input type="checkbox" id="enterToSend">
-    </label>
-
-    <label class="setting-toggle">
-      <span>
-        <strong>Auto-download media</strong>
-        <small>Unduh media secara otomatis.</small>
-      </span>
-      <input type="checkbox" id="autoDownload">
-    </label>
-
-    <div class="modal-actions">
-      <button class="primary-button" id="saveChatSettings">Simpan</button>
-    </div>
-  `);
-
-  $("#enterToSend").checked = settings.enterToSend;
-  $("#autoDownload").checked = settings.mediaAutoDownload;
-
-  $("#saveChatSettings").onclick = async () => {
-    settings.enterToSend = $("#enterToSend").checked;
-    settings.mediaAutoDownload = $("#autoDownload").checked;
-
-    await saveSettings();
-    closeModal();
-    notify("Pengaturan chat disimpan.");
-  };
+    showToast("Pengaturan disimpan", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Gagal menyimpan pengaturan", "error");
+  }
 }
 
-// =====================================
-// NOTIFICATIONS
-// =====================================
+async function editProfile() {
+  const user = getCurrentUser();
+  const profile = getCurrentProfile() || {};
 
-function openNotificationSettings() {
-  openModal(`
-    <div class="modal-heading">
-      <h2>Notifications</h2>
-      <p>Atur notifikasi aplikasi.</p>
-    </div>
+  const name = prompt("Nama:", profile.name || "");
+  if (name === null || !name.trim()) return;
 
-    <label class="setting-toggle">
-      <span>
-        <strong>Notifications</strong>
-        <small>Aktifkan notifikasi aplikasi.</small>
-      </span>
-      <input type="checkbox" id="notificationsEnabled">
-    </label>
+  const bio = prompt("Bio:", profile.bio || "");
+  if (bio === null) return;
 
-    <label class="setting-toggle">
-      <span>
-        <strong>Message preview</strong>
-        <small>Tampilkan isi pesan pada notifikasi.</small>
-      </span>
-      <input type="checkbox" id="messagePreview">
-    </label>
+  try {
+    await updateDoc(doc(db, "users", user.uid), {
+      name: name.trim().slice(0, 60),
+      bio: bio.trim().slice(0, 160),
+      updatedAt: serverTimestamp()
+    });
 
-    <div class="modal-actions">
-      <button class="primary-button" id="saveNotifications">Simpan</button>
-    </div>
-  `);
+    await updateDoc(doc(db, "publicProfiles", user.uid), {
+      name: name.trim().slice(0, 60),
+      bio: bio.trim().slice(0, 160),
+      updatedAt: serverTimestamp()
+    });
 
-  $("#notificationsEnabled").checked = settings.notifications;
-  $("#messagePreview").checked = settings.messagePreview;
+    await updateProfile(user, {
+      displayName: name.trim().slice(0, 60)
+    });
 
-  $("#saveNotifications").onclick = async () => {
-    settings.notifications = $("#notificationsEnabled").checked;
-    settings.messagePreview = $("#messagePreview").checked;
+    showToast("Profil berhasil diperbarui", "success");
+    renderSettings();
 
-    await saveSettings();
-    closeModal();
-    notify("Pengaturan notifikasi disimpan.");
-  };
+  } catch (error) {
+    console.error(error);
+    showToast("Gagal memperbarui profil", "error");
+  }
 }
 
-// =====================================
-// LANGUAGE
-// =====================================
+async function changePassword() {
+  const user = getCurrentUser();
 
-function openLanguageSettings() {
-  openModal(`
-    <div class="modal-heading">
-      <h2>Language</h2>
-      <p>Pilih bahasa aplikasi.</p>
-    </div>
+  if (!user?.email) {
+    showToast("Akun tidak memiliki email", "error");
+    return;
+  }
 
-    <select id="languageSelect">
-      <option value="id">Bahasa Indonesia</option>
-      <option value="en">English</option>
-    </select>
+  const currentPassword = prompt("Masukkan password saat ini:");
+  if (!currentPassword) return;
 
-    <div class="modal-actions">
-      <button class="primary-button" id="saveLanguage">Simpan</button>
-    </div>
-  `);
-
-  $("#languageSelect").value = settings.language;
-
-  $("#saveLanguage").onclick = async () => {
-    settings.language = $("#languageSelect").value;
-    await saveSettings();
-    closeModal();
-
-    notify(
-      settings.language === "id"
-        ? "Bahasa dipilih: Indonesia."
-        : "Language selected: English."
-    );
-
-    notify("Penerjemahan seluruh halaman perlu integrasi bahasa tambahan.");
-  };
-}
-
-// =====================================
-// STORAGE
-// =====================================
-
-function openStorageSettings() {
-  openModal(`
-    <div class="modal-heading">
-      <h2>Storage and data</h2>
-      <p>Informasi penggunaan penyimpanan.</p>
-    </div>
-
-    <div class="storage-info">
-      <div class="storage-info-item">
-        <strong>Media</strong>
-        <span>Firebase Storage</span>
-      </div>
-      <div class="storage-info-item">
-        <strong>Messages</strong>
-        <span>Cloud Firestore</span>
-      </div>
-    </div>
-
-    <p class="settings-note">
-      Penggunaan penyimpanan akan ditampilkan setelah sistem penghitungan
-      media terintegrasi.
-    </p>
-  `);
-}
-
-// =====================================
-// HELP AND ABOUT
-// =====================================
-
-function openHelp() {
-  openModal(`
-    <div class="modal-heading">
-      <h2>Help Center</h2>
-      <p>Bantuan penggunaan ZORAP.</p>
-    </div>
-
-    <div class="help-list">
-      <div><strong>Account</strong><p>Kelola profil dan informasi akun.</p></div>
-      <div><strong>Messages</strong><p>Kirim pesan melalui halaman Chats.</p></div>
-      <div><strong>Contacts</strong><p>Cari pengguna melalui username.</p></div>
-      <div><strong>Groups</strong><p>Buat grup dan tambahkan anggota.</p></div>
-      <div><strong>Status</strong><p>Bagikan foto atau video selama 24 jam.</p></div>
-    </div>
-  `);
-}
-
-function openAbout() {
-  openModal(`
-    <div class="about-brand">
-      <div class="brand-logo">Z</div>
-      <h2>ZORAP</h2>
-      <p>Messaging platform</p>
-      <span>Version 1.0.0</span>
-    </div>
-    <p class="settings-note">
-      ZORAP adalah aplikasi komunikasi berbasis web.
-    </p>
-  `);
-}
-
-// =====================================
-// PASSWORD RESET
-// =====================================
-
-async function requestPasswordReset() {
-  if (!currentUser?.email) {
-    notify("Akun ini tidak memiliki email.");
+  const newPassword = prompt("Masukkan password baru (minimal 8 karakter):");
+  if (!newPassword || newPassword.length < 8) {
+    showToast("Password baru minimal 8 karakter", "warning");
     return;
   }
 
   try {
-    await sendPasswordResetEmail(auth, currentUser.email);
-    notify("Link reset password dikirim ke email kamu.");
+    const credential = EmailAuthProvider.credential(
+      user.email,
+      currentPassword
+    );
+
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+
+    showToast("Password berhasil diubah", "success");
+
   } catch (error) {
     console.error(error);
-    notify("Gagal mengirim email reset password.");
+    showToast("Gagal mengubah password. Periksa password saat ini.", "error");
   }
 }
 
-// =====================================
-// SETTINGS ROUTER
-// =====================================
-
-function openSetting(name) {
-  switch (name) {
-    case "account":
-      openProfileSettings();
-      break;
-
-    case "privacy":
-      openPrivacySettings();
-      break;
-
-    case "chats":
-      openChatSettings();
-      break;
-
-    case "notifications":
-      openNotificationSettings();
-      break;
-
-    case "appearance":
-      openAppearanceSettings();
-      break;
-
-    case "language":
-      openLanguageSettings();
-      break;
-
-    case "storage":
-      openStorageSettings();
-      break;
-
-    case "help":
-      openHelp();
-      break;
-
-    case "about":
-      openAbout();
-      break;
-
-    default:
-      notify("Pengaturan tidak tersedia.");
-  }
-}
-
-// =====================================
-// EVENT BINDINGS
-// =====================================
-
-function bindSettingsEvents() {
-  document.querySelectorAll("[data-setting]").forEach(button => {
-    button.onclick = () => openSetting(button.dataset.setting);
-  });
-
-  $("#settingsProfile")?.addEventListener("click", openProfileSettings);
-  $("#openSettingsProfile")?.addEventListener("click", openProfileSettings);
-
-  $("#themeToggle")?.addEventListener("click", async () => {
-    const next = settings.theme === "dark" ? "light" : "dark";
-    applyTheme(next);
-    await saveSettings();
-  });
-
-  $("#logoutBtn")?.addEventListener("click", async () => {
-    const confirmed = confirm("Yakin ingin keluar dari ZORAP?");
-    if (!confirmed) return;
-
-    try {
-      const { signOut } = await import(
-        "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js"
-      );
-
-      await signOut(auth);
-      window.location.href = "./index.html";
-    } catch (error) {
-      console.error(error);
-      notify("Gagal logout.");
-    }
-  });
-}
-
-// =====================================
-// PUBLIC API
-// =====================================
-
-window.zorapSettings = {
-  get settings() {
-    return { ...settings };
-  },
-  openSetting,
-  openProfileSettings,
-  openAppearanceSettings,
-  requestPasswordReset,
-  saveSettings
-};
+window.addEventListener("zorap:ready", renderSettings);
