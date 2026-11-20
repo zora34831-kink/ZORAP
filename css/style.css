@@ -1,0 +1,87 @@
+
+/* THEME SYSTEM */
+
+body {
+  transition: background .3s ease, color .3s ease;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+  transition: .25s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--purple);
+  transform: translateY(-2px);
+}
+
+.theme-toggle:active {
+  transform: scale(.96);
+}
+
+/* LIGHT MODE */
+
+body.light-mode {
+  --bg: #f5f4fa;
+  --surface: #ffffff;
+  --surface-2: #eeedf5;
+  --border: rgba(30,25,50,.11);
+  --text: #191622;
+  --muted: #777386;
+  --purple: #7745e8;
+  --purple-light: #9068f4;
+
+  background:
+    radial-gradient(ellipse at 50% -20%, rgba(145,101,255,.12), transparent 55%),
+    var(--bg);
+}
+
+body.light-mode .splash {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(126,80,255,.12), transparent 35%),
+    #f5f4fa;
+}
+
+body.light-mode .splash h1 {
+  color: #191622;
+}
+
+body.light-mode .splash p {
+  color: #777386;
+}
+
+body.light-mode input {
+  color: #191622;
+  background: #ffffff;
+  border-color: rgba(30,25,50,.12);
+}
+
+body.light-mode input::placeholder {
+  color: #aaa6b5;
+}
+
+body.light-mode .theme-toggle {
+  background: #ffffff;
+  color: #191622;
+}
+
+body.light-mode .auth-footer {
+  color: #777386;
+}
+
+body.light-mode .auth-content {
+  color: #191622;
+}
+
+body.light-mode .auth-heading p {
+  color: #777386;
+}
