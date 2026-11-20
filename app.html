@@ -4,245 +4,241 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#09090d">
-  <meta name="description" content="ZORAP UNTUK SEMUA">
-  <title>ZORAP</title>
+  <meta name="theme-color" content="#0c0b12">
+  <meta name="description" content="ZORAP — Connect beyond boundaries.">
 
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/chat.css">
+  <title>ZORAP — Messaging</title>
+
+  <link rel="icon" href="./assets/icon.png">
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/chat.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
-<body class="app-body">
+<body>
 
-  <div class="app-layout">
+<!-- =================================
+     APPLICATION
+================================== -->
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
+<div id="app" class="app-shell">
 
-      <header class="sidebar-header">
+  <!-- SIDEBAR -->
 
-        <div class="brand">
-          <div class="brand-logo">Z</div>
-          <span>ZORAP</span>
-        </div>
+  <aside class="sidebar">
 
-        <div class="header-buttons">
+    <div class="brand">
+      <div class="brand-logo">Z</div>
+      <div class="brand-name">ZORAP</div>
+    </div>
 
-          <button class="icon-button" id="newChatBtn" title="Chat baru">
-            <svg viewBox="0 0 24 24">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-          </button>
+    <div class="sidebar-profile" id="openMyProfile">
+      <div class="avatar">
+        <img id="myAvatar" src="" alt="">
+      </div>
 
-          <button class="icon-button" id="moreMenuBtn" title="Menu">
-            <svg viewBox="0 0 24 24">
-              <circle cx="5" cy="12" r="1"/>
-              <circle cx="12" cy="12" r="1"/>
-              <circle cx="19" cy="12" r="1"/>
-            </svg>
-          </button>
+      <div class="sidebar-profile-info">
+        <strong id="myName">Memuat...</strong>
+        <span id="myUsername">@username</span>
+      </div>
 
-        </div>
-      </header>
+      <button id="moreMenuBtn" class="icon-btn" aria-label="Menu lainnya">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="5" cy="12" r="1.5"/>
+          <circle cx="12" cy="12" r="1.5"/>
+          <circle cx="19" cy="12" r="1.5"/>
+        </svg>
+      </button>
+    </div>
 
-      <!-- SEARCH -->
-      <div class="search-area">
-        <div class="search-box">
-          <svg viewBox="0 0 24 24">
+    <div class="sidebar-search">
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="11" cy="11" r="7"/>
+        <path d="m16 16 4 4"/>
+      </svg>
+      <input id="chatSearch" type="search" placeholder="Cari percakapan...">
+    </div>
+
+    <nav class="sidebar-nav">
+
+      <button class="nav-item active" data-page="chats">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.5-3A7.5 7.5 0 1 1 20 11.5Z"/>
+        </svg>
+        <span>Chats</span>
+      </button>
+
+      <button class="nav-item" data-page="updates">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9"/>
+          <circle cx="12" cy="12" r="5"/>
+          <circle cx="12" cy="12" r="1"/>
+        </svg>
+        <span>Updates</span>
+      </button>
+
+      <button class="nav-item" data-page="groups">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="9" cy="8" r="3"/>
+          <circle cx="17" cy="9" r="2.5"/>
+          <path d="M3 20c0-3.5 2.5-5.5 6-5.5s6 2 6 5.5"/>
+          <path d="M15 15c3.5-.3 6 1.5 6 4"/>
+        </svg>
+        <span>Groups</span>
+      </button>
+
+      <button class="nav-item" data-page="calls">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M7 3h3l2 5-2 2a14 14 0 0 0 4 4l2-2 5 2v3c0 1.1-.9 2-2 2C10 19 5 14 5 5c0-1.1.9-2 2-2Z"/>
+        </svg>
+        <span>Calls</span>
+      </button>
+
+      <button class="nav-item" data-page="settings">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19 13.5a7 7 0 0 0 0-3l2-1.5-2-3.5-2.5 1a8 8 0 0 0-2.5-1.5L13.5 2h-4L9 5a8 8 0 0 0-2.5 1.5L4 5.5 2 9l2 1.5a7 7 0 0 0 0 3L2 15l2 3.5 2.5-1A8 8 0 0 0 9 19l.5 3h4l.5-3a8 8 0 0 0 2.5-1.5l2.5 1 2-3.5Z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="connection-indicator">
+        <span class="connection-dot"></span>
+        <span>ZORAP CONNECTED</span>
+      </div>
+      <span class="version-label">ZORAP WEB · 1.0</span>
+    </div>
+
+  </aside>
+
+
+  <!-- MAIN CONTENT -->
+
+  <main class="main-content">
+
+    <!-- TOPBAR -->
+
+    <header class="topbar">
+      <div>
+        <div class="topbar-eyebrow">YOUR PERSONAL SPACE</div>
+        <h1 id="pageTitle">Chats</h1>
+      </div>
+
+      <div class="topbar-actions">
+
+        <button id="globalSearchBtn" class="icon-btn" aria-label="Cari">
+          <svg viewBox="0 0 24 24" fill="none">
             <circle cx="11" cy="11" r="7"/>
             <path d="m16 16 4 4"/>
           </svg>
-
-          <input
-            id="chatSearch"
-            type="search"
-            placeholder="Cari chat atau username..."
-            autocomplete="off"
-          >
-        </div>
-      </div>
-
-      <!-- FILTER -->
-      <div class="chat-filters">
-        <button class="filter-btn active" data-filter="all">Semua</button>
-        <button class="filter-btn" data-filter="unread">Belum dibaca</button>
-        <button class="filter-btn" data-filter="groups">Grup</button>
-      </div>
-
-      <!-- CHAT LIST -->
-      <section class="chat-list-section">
-
-        <div class="section-heading">
-          <span>Pesan</span>
-          <span id="chatCount">0 percakapan</span>
-        </div>
-
-        <div id="chatList" class="chat-list">
-
-          <div class="chat-empty">
-            <div class="empty-icon">
-              <svg viewBox="0 0 24 24">
-                <path d="M21 11.5a8.5 8.5 0 0 1-9 8.5 9.2 9.2 0 0 1-4-.9L3 21l1.9-4.6A8.5 8.5 0 1 1 21 11.5Z"/>
-              </svg>
-            </div>
-
-            <h3>Belum ada percakapan</h3>
-            <p>Mulai chat dengan temanmu di ZORAP.</p>
-
-            <button id="emptyNewChatBtn">
-              Mulai percakapan
-            </button>
-          </div>
-
-        </div>
-
-      </section>
-
-      <!-- CURRENT USER -->
-      <footer class="sidebar-profile">
-
-        <button class="profile-mini" id="openMyProfile">
-
-          <div class="avatar avatar-small" id="myAvatar">
-            Z
-          </div>
-
-          <div class="profile-mini-info">
-            <strong id="myName">Memuat profil...</strong>
-            <span id="myUsername">@username</span>
-          </div>
-
-          <span class="profile-menu-icon">•••</span>
-
         </button>
 
-      </footer>
-
-    </aside>
-
-
-    <!-- MAIN CONTENT -->
-    <main class="main-content">
-
-      <!-- TOPBAR -->
-      <header class="main-header">
-
-        <button class="mobile-back icon-button" id="mobileBackBtn">
-          <svg viewBox="0 0 24 24">
-            <path d="m15 18-6-6 6-6"/>
+        <button id="themeToggle" class="icon-btn" aria-label="Ganti tema">
+          <svg id="themeIcon" viewBox="0 0 24 24" fill="none">
+            <path d="M20 15.5A8 8 0 0 1 8.5 4 8 8 0 1 0 20 15.5Z"/>
           </svg>
         </button>
 
-        <div class="main-header-title">
-          <span class="eyebrow">YOUR SPACE</span>
-          <h2 id="pageTitle">Pesan</h2>
+        <button id="newChatBtn" class="primary-btn">
+          <span>+</span> New chat
+        </button>
+
+      </div>
+    </header>
+
+
+    <!-- =================================
+         CHATS PAGE
+    ================================== -->
+
+    <section id="welcomePanel" class="page-content">
+
+      <div class="section-heading">
+        <div>
+          <h2>Messages</h2>
+          <p>Semua percakapan kamu ada di sini.</p>
         </div>
 
-        <div class="main-header-actions">
+        <button id="emptyNewChatBtn" class="secondary-btn">
+          + Mulai chat
+        </button>
+      </div>
 
-          <button class="icon-button" id="globalSearchBtn" title="Cari">
-            <svg viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="7"/>
-              <path d="m16 16 4 4"/>
-            </svg>
-          </button>
+      <div class="chat-layout">
 
-          <button class="icon-button" id="themeToggle" title="Ganti tema">
-            <svg viewBox="0 0 24 24" id="themeIcon">
-              <circle cx="12" cy="12" r="4"/>
-              <path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>
-            </svg>
-          </button>
+        <div class="chat-list-panel">
 
-        </div>
-      </header>
+          <div class="list-heading">
+            <span>ALL MESSAGES</span>
+            <span id="chatCount">0</span>
+          </div>
 
+          <div id="chatList" class="chat-list">
 
-      <!-- PAGE CONTENT -->
-      <section class="page-container">
-
-        <!-- DEFAULT WELCOME -->
-        <section id="welcomePanel" class="welcome-panel">
-
-          <div class="welcome-decoration"></div>
-
-          <div class="welcome-content">
-
-            <div class="welcome-logo">Z</div>
-
-            <span class="eyebrow">PRIVATE MESSAGING</span>
-
-            <h1>Semua percakapan,<br>
-              <span>dalam satu tempat.</span>
-            </h1>
-
-            <p>
-              Selamat datang di ZORAP. Pilih percakapan
-              untuk mulai terhubung dengan temanmu.
-            </p>
-
-            <button class="primary-btn" id="welcomeNewChatBtn">
-              Mulai percakapan
-              <span>→</span>
-            </button>
+            <div class="empty-state">
+              <div class="empty-state-icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.5-3A7.5 7.5 0 1 1 20 11.5Z"/>
+                </svg>
+              </div>
+              <h3>Belum ada percakapan</h3>
+              <p>Mulai percakapan dengan temanmu.</p>
+              <button id="welcomeNewChatBtn" class="primary-btn">
+                Mulai percakapan
+              </button>
+            </div>
 
           </div>
 
-          <div class="welcome-footer">
-            ZORAP · CONNECT WITHOUT LIMITS
-          </div>
-
-        </section>
+        </div>
 
 
         <!-- CHAT VIEW -->
+
         <section id="chatView" class="chat-view hidden">
 
-          <header class="conversation-header">
+          <header id="conversationHeader" class="conversation-header">
 
-            <div class="conversation-user">
+            <button id="mobileBackBtn" class="icon-btn" aria-label="Kembali">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="m15 18-6-6 6-6"/>
+              </svg>
+            </button>
 
-              <button class="avatar" id="conversationAvatar">
-                Z
-              </button>
-
-              <div class="conversation-user-info">
-                <div class="name-line">
-                  <h3 id="conversationName">Nama pengguna</h3>
-                  <span id="conversationVerified" class="verified-badge hidden"
-                    title="Akun terverifikasi">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M12 2.5 14.7 4l3.1-.1 1.4 2.7 2.6 1.6-.5 3 1 2.9-2.2 2.2-.5 3-3 .7-2.3 2.1-2.8-1.2-2.8.5-1.8-2.5-2.9-1-.3-3-2-2.3 1.2-2.8-.4-3 2.6-1.6 1.4-2.7 3.1.1z"/>
-                      <path class="verified-check" d="m8 12 2.5 2.5L16.5 8"/>
-                    </svg>
-                  </span>
-                </div>
-
-                <span id="conversationStatus">offline</span>
+            <div class="conversation-user-info">
+              <div class="avatar">
+                <img id="conversationAvatar" src="" alt="">
               </div>
 
+              <div>
+                <div class="name-line">
+                  <strong id="conversationName">Percakapan</strong>
+                  <span id="conversationVerified"></span>
+                </div>
+                <span id="conversationStatus">ZORAP</span>
+              </div>
             </div>
 
             <div class="conversation-actions">
 
-              <button class="icon-button" id="callBtn" title="Panggilan suara">
-                <svg viewBox="0 0 24 24">
-                  <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.5 3a2 2 0 0 1-.6 1.8L7.5 10a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 1.8-.6l3 .5a2 2 0 0 1 2.2 2.5Z"/>
+              <button id="chatSearchBtn" class="icon-btn" aria-label="Cari pesan">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <circle cx="11" cy="11" r="7"/>
+                  <path d="m16 16 4 4"/>
                 </svg>
               </button>
 
-              <button class="icon-button" id="videoCallBtn" title="Panggilan video">
-                <svg viewBox="0 0 24 24">
-                  <rect x="3" y="6" width="13" height="12" rx="2"/>
-                  <path d="m16 10 5-3v10l-5-3"/>
-                </svg>
-              </button>
-
-              <button class="icon-button" id="conversationMenuBtn" title="Lainnya">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="5" cy="12" r="1"/>
-                  <circle cx="12" cy="12" r="1"/>
-                  <circle cx="19" cy="12" r="1"/>
+              <button id="conversationMenuBtn" class="icon-btn" aria-label="Menu chat">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <circle cx="5" cy="12" r="1.5"/>
+                  <circle cx="12" cy="12" r="1.5"/>
+                  <circle cx="19" cy="12" r="1.5"/>
                 </svg>
               </button>
 
@@ -251,18 +247,16 @@
           </header>
 
 
-          <!-- MESSAGE HISTORY -->
           <div id="messageHistory" class="message-history">
 
-            <div class="conversation-start">
-              <div class="conversation-start-logo">Z</div>
-              <span>Percakapan dimulai di ZORAP</span>
+            <div class="message-empty">
+              <h3>Mulai percakapan</h3>
+              <p>Kirim pesan pertama kamu.</p>
             </div>
 
           </div>
 
 
-          <!-- TYPING -->
           <div id="typingIndicator" class="typing-indicator hidden">
             <span></span>
             <span></span>
@@ -271,12 +265,11 @@
           </div>
 
 
-          <!-- MESSAGE INPUT -->
           <form id="messageForm" class="message-composer">
 
-            <button type="button" class="composer-button" id="attachBtn" title="Lampiran">
-              <svg viewBox="0 0 24 24">
-                <path d="m21.4 11.1-8.5 8.5a5.5 5.5 0 0 1-7.8-7.8l9.2-9.2a3.7 3.7 0 0 1 5.2 5.2l-9.2 9.2a1.8 1.8 0 0 1-2.6-2.6l8.5-8.5"/>
+            <button type="button" id="attachmentBtn" class="icon-btn" aria-label="Lampiran">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="m8 12 7-7a4 4 0 0 1 6 6l-9 9a6 6 0 0 1-9-9l9-9"/>
               </svg>
             </button>
 
@@ -284,19 +277,12 @@
               id="messageInput"
               type="text"
               placeholder="Tulis pesan..."
-              maxlength="5000"
               autocomplete="off"
+              maxlength="5000"
             >
 
-            <button type="button" class="composer-button" id="emojiBtn" title="Emoji">
-              <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>
-              </svg>
-            </button>
-
-            <button type="submit" class="send-button" id="sendMessageBtn" title="Kirim pesan">
-              <svg viewBox="0 0 24 24">
+            <button id="sendMessageBtn" type="submit" class="send-btn" aria-label="Kirim pesan">
+              <svg viewBox="0 0 24 24" fill="none">
                 <path d="m22 2-7 20-4-9-9-4Z"/>
                 <path d="M22 2 11 13"/>
               </svg>
@@ -306,285 +292,398 @@
 
         </section>
 
+      </div>
 
-        <!-- UPDATES PAGE -->
-        <section id="updatesPage" class="feature-page hidden">
-
-          <div class="feature-heading">
-            <span class="eyebrow">ZORAP UPDATES</span>
-            <h1>Pembaruan</h1>
-            <p>Bagikan momen dan lihat pembaruan temanmu.</p>
-          </div>
-
-          <button class="feature-action" id="createStatusBtn">
-            <span class="feature-action-icon">+</span>
-            <span>
-              <strong>Buat status</strong>
-              <small>Bagikan sesuatu yang baru</small>
-            </span>
-          </button>
-
-          <div id="statusList" class="feature-list">
-            <div class="feature-empty">Belum ada status.</div>
-          </div>
-
-        </section>
+    </section>
 
 
-        <!-- GROUP PAGE -->
-        <section id="groupsPage" class="feature-page hidden">
+    <!-- =================================
+         UPDATES PAGE
+    ================================== -->
 
-          <div class="feature-heading">
-            <span class="eyebrow">COMMUNITIES</span>
-            <h1>Grup</h1>
-            <p>Terhubung dan berdiskusi bersama.</p>
-          </div>
+    <section id="updatesPage" class="page-content hidden">
 
-          <button class="feature-action" id="createGroupBtn">
-            <span class="feature-action-icon">+</span>
-            <span>
-              <strong>Buat grup baru</strong>
-              <small>Mulai percakapan bersama</small>
-            </span>
-          </button>
+      <div class="section-heading">
+        <div>
+          <h2>Updates</h2>
+          <p>Bagikan momen bersama teman.</p>
+        </div>
 
-          <div id="groupList" class="feature-list">
-            <div class="feature-empty">Kamu belum bergabung dengan grup.</div>
-          </div>
+        <button id="createStatusBtn" class="primary-btn">
+          + Buat status
+        </button>
+      </div>
 
-        </section>
+      <div class="feature-card status-intro">
+        <div>
+          <span class="card-eyebrow">ZORAP UPDATES</span>
+          <h3>What's happening?</h3>
+          <p>Foto dan video status akan tersedia selama 24 jam.</p>
+        </div>
+      </div>
 
+      <div class="section-heading compact-heading">
+        <h3>Status terbaru</h3>
+      </div>
 
-        <!-- CALLS PAGE -->
-        <section id="callsPage" class="feature-page hidden">
+      <div id="statusList" class="status-list"></div>
 
-          <div class="feature-heading">
-            <span class="eyebrow">CALL HISTORY</span>
-            <h1>Panggilan</h1>
-            <p>Riwayat komunikasi ZORAP.</p>
-          </div>
-
-          <div id="callHistory" class="feature-list">
-            <div class="feature-empty">Belum ada riwayat panggilan.</div>
-          </div>
-
-        </section>
+    </section>
 
 
-        <!-- SETTINGS PAGE -->
-        <section id="settingsPage" class="feature-page hidden">
+    <!-- =================================
+         GROUPS PAGE
+    ================================== -->
 
-          <div class="feature-heading">
-            <span class="eyebrow">PREFERENCES</span>
-            <h1>Pengaturan</h1>
-            <p>Atur pengalaman ZORAP milikmu.</p>
-          </div>
+    <section id="groupsPage" class="page-content hidden">
 
-          <div class="settings-profile" id="settingsProfile">
-            <div class="avatar" id="settingsAvatar">Z</div>
-            <div>
-              <strong id="settingsName">Memuat profil...</strong>
-              <small id="settingsUsername">@username</small>
-            </div>
-            <span>›</span>
-          </div>
+      <div class="section-heading">
+        <div>
+          <h2>Groups</h2>
+          <p>Ruang obrolan bersama teman-teman.</p>
+        </div>
 
-          <div class="settings-group">
+        <button id="createGroupBtn" class="primary-btn">
+          + Buat grup
+        </button>
+      </div>
 
-            <div class="settings-group-title">AKUN</div>
+      <div class="feature-card">
+        <div>
+          <span class="card-eyebrow">COMMUNITIES</span>
+          <h3>Better conversations together.</h3>
+          <p>Buat grup dan mulai berkomunikasi bersama.</p>
+        </div>
+      </div>
 
-            <button class="setting-item" data-setting="account">
-              <span class="setting-icon">01</span>
-              <span>
-                <strong>Akun</strong>
-                <small>Informasi dan keamanan akun</small>
-              </span>
-              <span>›</span>
-            </button>
+      <div class="section-heading compact-heading">
+        <h3>Grup kamu</h3>
+      </div>
 
-            <button class="setting-item" data-setting="privacy">
-              <span class="setting-icon">02</span>
-              <span>
-                <strong>Privasi</strong>
-                <small>Terakhir dilihat dan status online</small>
-              </span>
-              <span>›</span>
-            </button>
+      <div id="groupsList" class="groups-list">
 
-            <button class="setting-item" data-setting="avatar">
-              <span class="setting-icon">03</span>
-              <span>
-                <strong>Profil dan avatar</strong>
-                <small>Foto, nama, dan bio</small>
-              </span>
-              <span>›</span>
-            </button>
+        <div class="empty-state">
+          <h3>Belum ada grup</h3>
+          <p>Buat grup pertama kamu di ZORAP.</p>
+        </div>
 
-          </div>
+      </div>
 
-          <div class="settings-group">
-
-            <div class="settings-group-title">PREFERENSI</div>
-
-            <button class="setting-item" data-setting="chats">
-              <span class="setting-icon">04</span>
-              <span>
-                <strong>Chat</strong>
-                <small>Tampilan dan riwayat percakapan</small>
-              </span>
-              <span>›</span>
-            </button>
-
-            <button class="setting-item" data-setting="notifications">
-              <span class="setting-icon">05</span>
-              <span>
-                <strong>Notifikasi</strong>
-                <small>Pesan dan pemberitahuan</small>
-              </span>
-              <span>›</span>
-            </button>
-
-            <button class="setting-item" data-setting="appearance">
-              <span class="setting-icon">06</span>
-              <span>
-                <strong>Tampilan</strong>
-                <small>Mode gelap dan terang</small>
-              </span>
-              <span>›</span>
-            </button>
-
-            <button class="setting-item" data-setting="storage">
-              <span class="setting-icon">07</span>
-              <span>
-                <strong>Penyimpanan dan data</strong>
-                <small>Penggunaan data dan media</small>
-              </span>
-              <span>›</span>
-            </button>
-
-            <button class="setting-item" data-setting="language">
-              <span class="setting-icon">08</span>
-              <span>
-                <strong>Bahasa</strong>
-                <small>Bahasa aplikasi</small>
-              </span>
-              <span>›</span>
-            </button>
-
-            <button class="setting-item" data-setting="help">
-              <span class="setting-icon">09</span>
-              <span>
-                <strong>Bantuan</strong>
-                <small>Pusat bantuan ZORAP</small>
-              </span>
-              <span>›</span>
-            </button>
-
-            <button class="setting-item" data-setting="about">
-              <span class="setting-icon">10</span>
-              <span>
-                <strong>Tentang ZORAP</strong>
-                <small>Informasi aplikasi</small>
-              </span>
-              <span>›</span>
-            </button>
-
-          </div>
-
-          <button class="logout-button" id="logoutBtn">
-            Keluar dari akun
-          </button>
-
-          <div class="settings-version">ZORAP VERSION 1.0.0</div>
-
-        </section>
-
-      </section>
+    </section>
 
 
-      <!-- BOTTOM NAVIGATION -->
-      <nav class="bottom-navigation">
+    <!-- =================================
+         CALLS PAGE
+    ================================== -->
 
-        <button class="nav-item active" data-page="chats">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24">
-              <path d="M21 11.5a8.5 8.5 0 0 1-9 8.5 9.2 9.2 0 0 1-4-.9L3 21l1.9-4.6A8.5 8.5 0 1 1 21 11.5Z"/>
-            </svg>
-            <span id="totalUnread" class="nav-badge hidden">0</span>
-          </span>
-          <span>Chat</span>
+    <section id="callsPage" class="page-content hidden">
+
+      <div class="section-heading">
+        <div>
+          <h2>Calls</h2>
+          <p>Riwayat panggilan kamu.</p>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <span class="card-eyebrow">ZORAP CALLS</span>
+        <h3>Stay connected.</h3>
+        <p>Fitur panggilan suara dan video akan tersedia di sini.</p>
+      </div>
+
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M7 3h3l2 5-2 2a14 14 0 0 0 4 4l2-2 5 2v3c0 1.1-.9 2-2 2C10 19 5 14 5 5c0-1.1.9-2 2-2Z"/>
+          </svg>
+        </div>
+        <h3>Belum ada panggilan</h3>
+        <p>Riwayat panggilan akan muncul di sini.</p>
+      </div>
+
+    </section>
+
+
+    <!-- =================================
+         SETTINGS PAGE
+    ================================== -->
+
+    <section id="settingsPage" class="page-content hidden">
+
+      <div class="section-heading">
+        <div>
+          <h2>Settings</h2>
+          <p>Atur pengalaman ZORAP kamu.</p>
+        </div>
+      </div>
+
+
+      <!-- PROFILE -->
+
+      <div class="settings-profile-card" id="settingsProfile">
+
+        <div class="settings-avatar">
+          <img id="settingsAvatar" src="" alt="">
+        </div>
+
+        <div>
+          <h3 id="settingsName">Nama pengguna</h3>
+          <p id="settingsUsername">@username</p>
+          <span class="profile-label">ZORAP ACCOUNT</span>
+        </div>
+
+        <button class="icon-btn" aria-label="Buka profil">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
         </button>
 
-        <button class="nav-item" data-page="updates">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="9"/>
-              <circle cx="12" cy="12" r="5"/>
-              <circle cx="12" cy="12" r="1"/>
-            </svg>
+      </div>
+
+
+      <!-- SETTINGS GROUPS -->
+
+      <div class="settings-group">
+
+        <div class="settings-group-title">ACCOUNT</div>
+
+        <button class="setting-item" data-setting="account">
+          <span class="setting-icon">01</span>
+          <span>
+            <strong>Account</strong>
+            <small>Informasi dan keamanan akun</small>
           </span>
-          <span>Updates</span>
+          <span class="setting-arrow">›</span>
         </button>
 
-        <button class="nav-item" data-page="groups">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24">
-              <circle cx="9" cy="8" r="3"/>
-              <circle cx="17" cy="9" r="2.5"/>
-              <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 15c3.5-.4 6 1.8 6 5"/>
-            </svg>
+        <button class="setting-item" data-setting="privacy">
+          <span class="setting-icon">02</span>
+          <span>
+            <strong>Privacy</strong>
+            <small>Kontrol privasi dan aktivitas</small>
           </span>
-          <span>Grup</span>
+          <span class="setting-arrow">›</span>
         </button>
 
-        <button class="nav-item" data-page="calls">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24">
-              <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.5 3a2 2 0 0 1-.6 1.8L7.5 10a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 1.8-.6l3 .5a2 2 0 0 1 2.2 2.5Z"/>
-            </svg>
+        <button class="setting-item" data-setting="profile">
+          <span class="setting-icon">03</span>
+          <span>
+            <strong>Profile</strong>
+            <small>Nama, foto, dan username</small>
           </span>
-          <span>Panggilan</span>
+          <span class="setting-arrow">›</span>
         </button>
 
-        <button class="nav-item" data-page="settings">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.6.9l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.6-.9l-1.7.6-1.4-2.4 1.4-1.1a8 8 0 0 1 0-1.9l-1.4-1.1 1.4-2.4 1.7.6a8 8 0 0 1 1.6-.9l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.6.9l1.7-.6 1.4 2.4-1.4 1.1a8 8 0 0 1 0 1.8Z"/>
-            </svg>
+      </div>
+
+
+      <div class="settings-group">
+
+        <div class="settings-group-title">PERSONALIZATION</div>
+
+        <button class="setting-item" data-setting="chats">
+          <span class="setting-icon">04</span>
+          <span>
+            <strong>Chats</strong>
+            <small>Pengaturan percakapan</small>
           </span>
-          <span>Pengaturan</span>
+          <span class="setting-arrow">›</span>
         </button>
 
-      </nav>
+        <button class="setting-item" data-setting="notifications">
+          <span class="setting-icon">05</span>
+          <span>
+            <strong>Notifications</strong>
+            <small>Notifikasi dan suara</small>
+          </span>
+          <span class="setting-arrow">›</span>
+        </button>
 
-    </main>
+        <button class="setting-item" data-setting="appearance">
+          <span class="setting-icon">06</span>
+          <span>
+            <strong>Appearance</strong>
+            <small>Tema dan tampilan aplikasi</small>
+          </span>
+          <span class="setting-arrow">›</span>
+        </button>
 
-  </div>
+        <button class="setting-item" data-setting="language">
+          <span class="setting-icon">07</span>
+          <span>
+            <strong>Language</strong>
+            <small>Bahasa aplikasi</small>
+          </span>
+          <span class="setting-arrow">›</span>
+        </button>
+
+      </div>
 
 
-  <!-- GLOBAL MODAL -->
-  <div id="modalOverlay" class="modal-overlay hidden">
+      <div class="settings-group">
 
-    <div class="modal-box" id="modalBox">
+        <div class="settings-group-title">INFORMATION</div>
 
-      <button class="modal-close" id="modalCloseBtn">
-        ×
+        <button class="setting-item" data-setting="storage">
+          <span class="setting-icon">08</span>
+          <span>
+            <strong>Storage and data</strong>
+            <small>Penyimpanan dan penggunaan data</small>
+          </span>
+          <span class="setting-arrow">›</span>
+        </button>
+
+        <button class="setting-item" data-setting="help">
+          <span class="setting-icon">09</span>
+          <span>
+            <strong>Help</strong>
+            <small>Pusat bantuan ZORAP</small>
+          </span>
+          <span class="setting-arrow">›</span>
+        </button>
+
+        <button class="setting-item" data-setting="about">
+          <span class="setting-icon">10</span>
+          <span>
+            <strong>About ZORAP</strong>
+            <small>Informasi aplikasi</small>
+          </span>
+          <span class="setting-arrow">›</span>
+        </button>
+
+      </div>
+
+
+      <button id="logoutBtn" class="logout-btn">
+        Log out
       </button>
 
-      <div id="modalContent"></div>
+      <div class="settings-footer">
+        ZORAP WEB · VERSION 1.0
+        <p>Connect beyond boundaries.</p>
+      </div>
 
-    </div>
+    </section>
 
+  </main>
+
+
+  <!-- MOBILE BOTTOM NAVIGATION -->
+
+  <nav class="bottom-navigation">
+
+    <button class="nav-item active" data-page="chats">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.5-3A7.5 7.5 0 1 1 20 11.5Z"/>
+      </svg>
+      <span>Chats</span>
+    </button>
+
+    <button class="nav-item" data-page="updates">
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9"/>
+        <circle cx="12" cy="12" r="5"/>
+      </svg>
+      <span>Updates</span>
+    </button>
+
+    <button class="nav-item" data-page="groups">
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="9" cy="8" r="3"/>
+        <circle cx="17" cy="9" r="2.5"/>
+        <path d="M3 20c0-3.5 2.5-5.5 6-5.5s6 2 6 5.5"/>
+      </svg>
+      <span>Groups</span>
+    </button>
+
+    <button class="nav-item" data-page="calls">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M7 3h3l2 5-2 2a14 14 0 0 0 4 4l2-2 5 2v3c0 1.1-.9 2-2 2C10 19 5 14 5 5c0-1.1.9-2 2-2Z"/>
+      </svg>
+      <span>Calls</span>
+    </button>
+
+    <button class="nav-item" data-page="settings">
+      <svg viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19 13.5a7 7 0 0 0 0-3l2-1.5-2-3.5-2.5 1a8 8 0 0 0-2.5-1.5L13.5 2h-4L9 5a8 8 0 0 0-2.5 1.5L4 5.5 2 9l2 1.5a7 7 0 0 0 0 3L2 15l2 3.5 2.5-1A8 8 0 0 0 9 19l.5 3h4l.5-3a8 8 0 0 0 2.5-1.5l2.5 1 2-3.5Z"/>
+      </svg>
+      <span>Settings</span>
+    </button>
+
+  </nav>
+
+</div>
+
+
+<!-- =================================
+     MODAL
+================================== -->
+
+<div id="modalOverlay" class="modal-overlay hidden">
+
+  <div id="modalContent" class="modal-content">
+    <button id="modalCloseBtn" class="modal-close" aria-label="Tutup">
+      ×
+    </button>
   </div>
 
-
-  <!-- TOAST -->
-  <div id="toastContainer" class="toast-container"></div>
+</div>
 
 
-  <!-- APP JAVASCRIPT -->
-  <script type="module" src="js/app.js"></script>
+<!-- =================================
+     TOAST
+================================== -->
+
+<div id="toastContainer" class="toast-container"></div>
+
+
+<!-- =================================
+     STATUS VIEWER
+================================== -->
+
+<div id="statusViewer" class="status-viewer hidden">
+
+  <div id="statusProgress" class="status-progress"></div>
+
+  <header class="status-viewer-header">
+
+    <div class="status-viewer-user">
+      <div id="statusViewerAvatar" class="avatar"></div>
+
+      <div>
+        <strong id="statusViewerName">Pengguna</strong>
+        <span id="statusViewerTime"></span>
+      </div>
+    </div>
+
+    <div class="status-viewer-actions">
+      <button id="statusViewersBtn">Dilihat</button>
+      <button id="deleteStatusBtn" class="hidden">Hapus</button>
+      <button id="closeStatusViewer">×</button>
+    </div>
+
+  </header>
+
+  <button id="statusPrevious" class="status-nav previous">‹</button>
+
+  <div id="statusMedia" class="status-media"></div>
+
+  <button id="statusNext" class="status-nav next">›</button>
+
+  <div id="statusCaption" class="status-caption"></div>
+
+</div>
+
+
+<!-- =================================
+     SCRIPTS
+================================== -->
+
+<script type="module" src="./js/app.js"></script>
+<script type="module" src="./js/chat.js"></script>
+<script type="module" src="./js/groups.js"></script>
+<script type="module" src="./js/status.js"></script>
 
 </body>
 </html>
