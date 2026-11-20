@@ -1,13 +1,15 @@
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+import { initializeApp } from
+  "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
 
-import { getAuth } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+import { getAuth } from
+  "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
 
-import { getFirestore } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+import { getFirestore } from
+  "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 
-import { getDatabase } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js";
-
-import { getStorage } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-storage.js";
+import { getStorage } from
+  "https://www.gstatic.com/firebasejs/13.4.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAwl6AY7gy7c-zDrpGWcXhypw_Igqk5tKY",
@@ -21,9 +23,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-const auth = getAuth(app);
-const db = getFirestore(app);
-const rtdb = getDatabase(app);
-const storage = getStorage(app);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
 
-export { app, auth, db, rtdb, storage };
+export default app;
