@@ -5,9 +5,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#09090d">
+  <meta name="description" content="ZORAP - Private Messaging Experience">
   <title>ZORAP</title>
+
   <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
   <!-- SPLASH SCREEN -->
@@ -15,7 +18,8 @@
     <div class="splash-content">
       <div class="zora-logo">Z</div>
       <h1>ZORAP</h1>
-      <p>ZORA DEV</p>
+      <p>Connect without limits.</p>
+
       <div class="loading-line">
         <span></span>
       </div>
@@ -25,28 +29,55 @@
   <!-- AUTH SCREEN -->
   <main id="authScreen" class="auth-screen hidden">
 
-    <div class="auth-top">
+    <!-- HEADER -->
+    <header class="auth-top">
+
       <div class="brand">
         <div class="brand-logo">Z</div>
         <span>ZORAP</span>
       </div>
-      <div class="secure-label">
-        <span class="secure-dot"></span>
-        Secure connection
-      </div>
-    </div>
 
+      <div class="header-actions">
+
+        <div class="secure-label">
+          <span class="secure-dot"></span>
+          Secure connection
+        </div>
+
+        <button
+          type="button"
+          id="themeToggle"
+          class="theme-toggle"
+          aria-label="Ganti tema"
+        >
+          <span id="themeIcon">☀</span>
+          <span id="themeText">Light mode</span>
+        </button>
+
+      </div>
+    </header>
+
+    <!-- AUTH CONTENT -->
     <section class="auth-content">
+
       <div class="auth-heading">
         <span class="eyebrow">WELCOME TO ZORAP</span>
-        <h1 id="authTitle">Selamat datang<br>kembali.</h1>
+
+        <h1 id="authTitle">
+          Selamat datang<br>
+          kembali.
+        </h1>
+
         <p id="authDescription">
           Masuk untuk melanjutkan percakapanmu.
         </p>
       </div>
 
+      <!-- LOGIN FORM -->
       <form id="loginForm" class="auth-form">
+
         <label for="loginEmail">Email</label>
+
         <input
           id="loginEmail"
           type="email"
@@ -56,7 +87,9 @@
         >
 
         <label for="loginPassword">Password</label>
+
         <div class="password-wrap">
+
           <input
             id="loginPassword"
             type="password"
@@ -64,78 +97,128 @@
             autocomplete="current-password"
             required
           >
-          <button type="button" id="togglePassword">Lihat</button>
+
+          <button type="button" id="togglePassword">
+            Lihat
+          </button>
+
         </div>
 
-        <button type="button" id="forgotPassword" class="forgot">
+        <button
+          type="button"
+          id="forgotPassword"
+          class="forgot"
+        >
           Lupa password?
         </button>
 
-        <button type="submit" class="primary-btn" id="loginButton">
-          Masuk ke ZORAP
+        <button
+          type="submit"
+          class="primary-btn"
+          id="loginButton"
+        >
+          <span>Masuk ke ZORAP</span>
           <span>→</span>
         </button>
+
       </form>
 
+      <!-- REGISTER FORM -->
       <form id="registerForm" class="auth-form hidden">
+
         <label for="registerName">Nama pengguna</label>
+
         <input
           id="registerName"
           type="text"
           placeholder="Nama kamu"
           maxlength="30"
+          autocomplete="name"
           required
         >
 
         <label for="registerUsername">Username</label>
+
         <input
           id="registerUsername"
           type="text"
           placeholder="@username"
           minlength="3"
           maxlength="20"
+          autocomplete="username"
           required
         >
 
         <label for="registerEmail">Email</label>
+
         <input
           id="registerEmail"
           type="email"
           placeholder="nama@email.com"
+          autocomplete="email"
           required
         >
 
         <label for="registerPassword">Password</label>
+
         <input
           id="registerPassword"
           type="password"
           placeholder="Minimal 6 karakter"
           minlength="6"
+          autocomplete="new-password"
           required
         >
 
-        <button type="submit" class="primary-btn" id="registerButton">
-          Buat akun
+        <button
+          type="submit"
+          class="primary-btn"
+          id="registerButton"
+        >
+          <span>Buat akun</span>
           <span>→</span>
         </button>
+
       </form>
 
+      <!-- SWITCH LOGIN / REGISTER -->
       <div class="auth-switch">
-        <span id="switchText">Belum punya akun?</span>
-        <button type="button" id="switchAuth">Daftar sekarang</button>
+
+        <span id="switchText">
+          Belum punya akun?
+        </span>
+
+        <button
+          type="button"
+          id="switchAuth"
+        >
+          Daftar sekarang
+        </button>
+
       </div>
 
-      <div id="authMessage" class="auth-message hidden"></div>
+      <!-- AUTH NOTIFICATION -->
+      <div
+        id="authMessage"
+        class="auth-message hidden"
+        role="status"
+        aria-live="polite"
+      ></div>
+
     </section>
 
+    <!-- FOOTER -->
     <footer class="auth-footer">
       <span>© 2026 ZORAP</span>
-      <span>MUDAH BERSAMA KAMI</span>
+      <span>Mudah Bersama Kami</span>
     </footer>
+
   </main>
 
+  <!-- FIREBASE AUTH -->
   <div id="recaptcha-container"></div>
 
   <script type="module" src="js/auth.js"></script>
+
 </body>
 </html>
