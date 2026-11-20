@@ -2,580 +2,207 @@
 import { auth, db } from "./firebase.js";
 
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  setDoc,
-  updateDoc,
-  arrayUnion,
-  arrayRemove,
-  serverTimestamp,
-  deleteDoc,
-  onSnapshot
+  collection, doc, getDoc, getDocs, query, where,
+  addDoc, updateDoc, arrayUnion, arrayRemove,
+  serverTimestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 
+import { getCurrentUser, showToast } from "./app.js";
+import { openConversation } from "./chat.js";
 
-/* =====================================
-   ZORAP GROUP ENGINE
-===================================== */
+const groupList = document.getElementById("groupList");
+const createButton = document.getElementById("createGroupBtn");
 
-const $ = selector => document.querySelector(selector);
-
-let currentUser = null;
-let currentProfile = null;
-let groupListener = null;
-let userGroups = [];
-
-
-/* =====================================
-   INITIALIZATION
-===================================== */
-
-window.addEventListener("zorap:ready", event => {
-  currentUser = event.detail.user;
-  currentProfile = event.detail.profile;
-
-  loadGroups();
-});
-
-
-function notify(message) {
-  window.zorapToast?.(message);
+function escapeHTML(value = "") {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#039;"
+  })[c]);
 }
 
-function escapeText(value = "") {
-  return String(value).replace(/[&<>"']/g, char => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;"
-  })[char]);
-}
+let unsubscribeGroups = null;
 
+export async function loadGroups() {
+  const user = getCurrentUser();
+  if (!user || !groupList) return;
 
-/* =====================================
-   LOAD GROUPS
-===================================== */
+  unsubscribeGroups?.();
 
-function loadGroups() {
-  if (!currentUser) return;
-
-  groupListener?.();
-
-  const groupsQuery = query(
+  const q = query(
     collection(db, "conversations"),
-    where("participants", "array-contains", currentUser.uid),
-    where("type", "==", "group")
+    where("participants", "array-contains", user.uid)
   );
 
-  groupListener = onSnapshot(
-    groupsQuery,
-    snapshot => {
-      userGroups = snapshot.docs.map(item => ({
-        id: item.id,
-        ...item.data()
-      }));
-
-      userGroups.sort((a, b) => {
-        const first = a.updatedAt?.toMillis?.() || 0;
-        const second = b.updatedAt?.toMillis?.() || 0;
-        return second - first;
+  unsubscribeGroups = onSnapshot(q, snapshot => {
+    const groups = snapshot.docs
+      .filter(item => item.data().type === "group")
+      .sort((a, b) => {
+        const ta = a.data().updatedAt?.seconds || 0;
+        const tb = b.data().updatedAt?.seconds || 0;
+        return tb - ta;
       });
 
-      renderGroups();
-    },
-    error => {
-      console.error("Load groups:", error);
-      notify("Gagal memuat grup.");
-    }
-  );
-}
-
-
-/* =====================================
-   RENDER GROUP LIST
-===================================== */
-
-function renderGroups() {
-  const container = $("#groupsList");
-  if (!container) return;
-
-  container.replaceChildren();
-
-  if (!userGroups.length) {
-    const empty = document.createElement("div");
-
-    empty.className = "chat-empty";
-    empty.innerHTML = `
-      <div class="empty-icon">Z</div>
-      <h3>Belum ada grup</h3>
-      <p>Buat grup dan mulai percakapan bersama temanmu.</p>
-    `;
-
-    container.appendChild(empty);
-    return;
-  }
-
-  userGroups.forEach(group => {
-    const item = document.createElement("button");
-
-    item.type = "button";
-    item.className = "chat-item group-item";
-
-    const avatar = document.createElement("div");
-    avatar.className = "avatar";
-
-    if (group.groupPhoto) {
-      const image = document.createElement("img");
-      image.src = group.groupPhoto;
-      image.alt = "";
-      avatar.appendChild(image);
-    } else {
-      avatar.textContent = (group.groupName || "G")
-        .charAt(0)
-        .toUpperCase();
+    if (!groups.length) {
+      groupList.innerHTML = `
+        <div class="empty-state">
+          <h3>Belum ada grup</h3>
+          <p>Buat grup untuk mulai ngobrol bersama.</p>
+        </div>`;
+      return;
     }
 
-    const info = document.createElement("div");
-    info.className = "chat-item-info";
+    groupList.innerHTML = groups.map(item => {
+      const group = item.data();
 
-    const top = document.createElement("div");
-    top.className = "chat-item-top";
+      return `
+        <article class="group-row" data-id="${escapeHTML(item.id)}">
+          <div class="group-avatar">
+            ${escapeHTML((group.groupName || "G").charAt(0).toUpperCase())}
+          </div>
+          <div class="group-info">
+            <strong>${escapeHTML(group.groupName || "Grup")}</strong>
+            <span>${group.participants?.length || 0} anggota</span>
+          </div>
+          <button class="secondary-button group-open"
+                  data-id="${escapeHTML(item.id)}">Buka</button>
+        </article>`;
+    }).join("");
 
-    const name = document.createElement("strong");
-    name.textContent = group.groupName || "Grup ZORAP";
-
-    const count = document.createElement("span");
-    count.className = "chat-time";
-    count.textContent = `${group.participants?.length || 0} anggota`;
-
-    top.append(name, count);
-
-    const bottom = document.createElement("div");
-    bottom.className = "chat-item-bottom";
-
-    const description = document.createElement("span");
-    description.className = "chat-last-message";
-    description.textContent = group.lastMessage || "Mulai percakapan";
-
-    bottom.appendChild(description);
-    info.append(top, bottom);
-
-    item.append(avatar, info);
-
-    item.addEventListener("click", () => {
-      openGroup(group);
+    groupList.querySelectorAll(".group-open").forEach(button => {
+      button.addEventListener("click", () => {
+        openConversation(button.dataset.id);
+      });
     });
-
-    container.appendChild(item);
+  }, error => {
+    console.error(error);
+    showToast("Gagal memuat grup", "error");
   });
 }
 
+async function createGroup() {
+  const user = getCurrentUser();
+  if (!user) return;
 
-/* =====================================
-   CREATE GROUP
-===================================== */
+  const groupName = prompt("Masukkan nama grup:");
+  if (!groupName?.trim()) return;
 
-async function createGroup(groupName, description, usernames) {
-  if (!currentUser) return;
-
-  const name = groupName.trim();
-  const about = description.trim();
-
-  if (name.length < 3) {
-    notify("Nama grup minimal 3 karakter.");
-    return;
-  }
-
-  if (name.length > 40) {
-    notify("Nama grup maksimal 40 karakter.");
-    return;
-  }
-
-  const usernameList = [
-    ...new Set(
-      usernames
-        .split(",")
-        .map(item => item.trim().replace(/^@/, "").toLowerCase())
-        .filter(Boolean)
-    )
-  ];
-
-  if (!usernameList.length) {
-    notify("Tambahkan minimal satu anggota.");
-    return;
-  }
+  const description = prompt("Deskripsi grup (opsional):") || "";
 
   try {
-    const participants = [currentUser.uid];
-
-    for (const username of usernameList) {
-      const userQuery = query(
-        collection(db, "users"),
-        where("username", "==", username)
-      );
-
-      const result = await getDocs(userQuery);
-
-      if (result.empty) {
-        notify(`Username @${username} tidak ditemukan.`);
-        return;
-      }
-
-      const member = result.docs[0];
-
-      if (member.id !== currentUser.uid) {
-        participants.push(member.id);
-      }
-    }
-
-    const uniqueParticipants = [...new Set(participants)];
-
-    if (uniqueParticipants.length < 2) {
-      notify("Grup membutuhkan minimal dua anggota.");
-      return;
-    }
-
-    if (uniqueParticipants.length > 100) {
-      notify("Maksimal 100 anggota untuk versi ini.");
-      return;
-    }
-
-    const groupRef = doc(collection(db, "conversations"));
-
-    await setDoc(groupRef, {
-      type: "group",
-      groupName: name,
-      description: about,
-      groupPhoto: "",
-      participants: uniqueParticipants,
-      admins: [currentUser.uid],
-      createdBy: currentUser.uid,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      lastMessage: "Grup berhasil dibuat",
-      lastMessageAt: serverTimestamp(),
-      unreadCount: Object.fromEntries(
-        uniqueParticipants.map(uid => [uid, 0])
-      )
-    });
-
-    notify("Grup berhasil dibuat.");
-    window.zorapCloseModal?.();
-
-  } catch (error) {
-    console.error("Create group:", error);
-    notify("Gagal membuat grup. Periksa Firestore Rules.");
-  }
-}
-
-
-/* =====================================
-   CREATE GROUP MODAL
-===================================== */
-
-function showCreateGroupModal() {
-  const overlay = $("#modalOverlay");
-  const content = $("#modalContent");
-
-  if (!overlay || !content) return;
-
-  content.replaceChildren();
-
-  const title = document.createElement("h2");
-  title.textContent = "Buat grup baru";
-
-  const description = document.createElement("p");
-  description.textContent =
-    "Buat ruang percakapan bersama teman-temanmu.";
-  description.style.color = "var(--muted)";
-  description.style.fontSize = "13px";
-  description.style.margin = "8px 0 18px";
-
-  const nameInput = createInput(
-    "Nama grup",
-    "Contoh: Teman Sekolah"
-  );
-
-  const aboutInput = createInput(
-    "Deskripsi grup",
-    "Tentang grup ini..."
-  );
-
-  const membersInput = createInput(
-    "Username anggota",
-    "username1, username2"
-  );
-
-  const submit = document.createElement("button");
-  submit.className = "primary-btn";
-  submit.textContent = "Buat grup";
-  submit.style.width = "100%";
-  submit.style.marginTop = "15px";
-
-  submit.addEventListener("click", async () => {
-    submit.disabled = true;
-
-    try {
-      await createGroup(
-        nameInput.value,
-        aboutInput.value,
-        membersInput.value
-      );
-    } finally {
-      submit.disabled = false;
-    }
-  });
-
-  content.append(
-    title,
-    description,
-    nameInput,
-    aboutInput,
-    membersInput,
-    submit
-  );
-
-  overlay.classList.remove("hidden");
-}
-
-function createInput(placeholder, ariaLabel) {
-  const input = document.createElement("input");
-
-  input.type = "text";
-  input.placeholder = placeholder;
-  input.setAttribute("aria-label", ariaLabel);
-
-  input.style.width = "100%";
-  input.style.height = "45px";
-  input.style.padding = "0 13px";
-  input.style.marginTop = "10px";
-  input.style.border = "1px solid var(--border)";
-  input.style.borderRadius = "12px";
-  input.style.background = "var(--surface-2)";
-  input.style.color = "var(--text)";
-  input.style.outline = "none";
-
-  return input;
-}
-
-
-/* =====================================
-   OPEN GROUP
-===================================== */
-
-function openGroup(group) {
-  if (!group || !currentUser) return;
-
-  window.dispatchEvent(
-    new CustomEvent("zorap:open-group", {
-      detail: {
-        id: group.id,
-        type: "group",
-        groupName: group.groupName,
-        description: group.description || "",
-        participants: group.participants || [],
-        admins: group.admins || [],
-        createdBy: group.createdBy,
-        groupPhoto: group.groupPhoto || "",
-        lastMessage: group.lastMessage || ""
-      }
-    })
-  );
-}
-
-
-/* =====================================
-   ADD MEMBER
-===================================== */
-
-async function addMember(groupId, username) {
-  const cleanUsername = username
-    .trim()
-    .replace(/^@/, "")
-    .toLowerCase();
-
-  if (!cleanUsername) return;
-
-  try {
-    const groupRef = doc(db, "conversations", groupId);
-    const groupSnap = await getDoc(groupRef);
-
-    if (!groupSnap.exists()) {
-      notify("Grup tidak ditemukan.");
-      return;
-    }
-
-    const group = groupSnap.data();
-
-    if (!group.admins?.includes(currentUser.uid)) {
-      notify("Hanya admin grup yang bisa menambahkan anggota.");
-      return;
-    }
-
-    const userQuery = query(
-      collection(db, "users"),
-      where("username", "==", cleanUsername)
+    const profileSnap = await getDoc(
+      doc(db, "publicProfiles", user.uid)
     );
 
-    const result = await getDocs(userQuery);
+    const profile = profileSnap.exists() ? profileSnap.data() : {};
 
-    if (result.empty) {
-      notify("Username tidak ditemukan.");
+    const groupRef = await addDoc(collection(db, "conversations"), {
+      type: "group",
+      groupName: groupName.trim().slice(0, 60),
+      description: description.trim().slice(0, 500),
+      groupPhoto: "",
+      participants: [user.uid],
+      admins: [user.uid],
+      createdBy: user.uid,
+      memberNames: {
+        [user.uid]: profile.name || user.displayName || "Pengguna"
+      },
+      memberPhotos: {
+        [user.uid]: profile.photoURL || ""
+      },
+      unreadCount: {
+        [user.uid]: 0
+      },
+      lastMessage: "Grup dibuat",
+      lastMessageAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+
+    showToast("Grup berhasil dibuat", "success");
+    await openConversation(groupRef.id);
+
+  } catch (error) {
+    console.error(error);
+    showToast("Gagal membuat grup", "error");
+  }
+}
+
+export async function addGroupMember(groupId, targetUid) {
+  const user = getCurrentUser();
+  if (!user) return;
+
+  try {
+    const groupRef = doc(db, "conversations", groupId);
+    const snapshot = await getDoc(groupRef);
+
+    if (!snapshot.exists()) throw new Error("Grup tidak ditemukan");
+
+    const group = snapshot.data();
+
+    if (!group.admins?.includes(user.uid)) {
+      throw new Error("Hanya admin grup yang dapat menambahkan anggota");
+    }
+
+    if (group.participants.includes(targetUid)) {
+      showToast("Pengguna sudah menjadi anggota");
       return;
     }
 
-    const memberId = result.docs[0].id;
+    const profileSnap = await getDoc(
+      doc(db, "publicProfiles", targetUid)
+    );
 
-    if (group.participants.includes(memberId)) {
-      notify("Pengguna sudah menjadi anggota.");
+    if (!profileSnap.exists()) {
+      throw new Error("Profil pengguna tidak ditemukan");
+    }
+
+    const profile = profileSnap.data();
+
+    await updateDoc(groupRef, {
+      participants: arrayUnion(targetUid),
+      [`memberNames.${targetUid}`]: profile.name || "Pengguna",
+      [`memberPhotos.${targetUid}`]: profile.photoURL || "",
+      [`unreadCount.${targetUid}`]: 0,
+      updatedAt: serverTimestamp()
+    });
+
+    showToast("Anggota berhasil ditambahkan", "success");
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "Gagal menambahkan anggota", "error");
+  }
+}
+
+export async function leaveGroup(groupId) {
+  const user = getCurrentUser();
+  if (!user) return;
+
+  try {
+    const groupRef = doc(db, "conversations", groupId);
+    const snapshot = await getDoc(groupRef);
+
+    if (!snapshot.exists()) return;
+
+    const group = snapshot.data();
+
+    if (group.createdBy === user.uid && group.participants.length > 1) {
+      showToast("Pemilik grup harus memindahkan kepemilikan terlebih dahulu");
       return;
     }
 
     await updateDoc(groupRef, {
-      participants: arrayUnion(memberId),
-      [`unreadCount.${memberId}`]: 0,
+      participants: arrayRemove(user.uid),
+      admins: arrayRemove(user.uid),
       updatedAt: serverTimestamp()
     });
 
-    notify("Anggota berhasil ditambahkan.");
-
-  } catch (error) {
-    console.error("Add member:", error);
-    notify("Gagal menambahkan anggota.");
-  }
-}
-
-
-/* =====================================
-   REMOVE MEMBER
-===================================== */
-
-async function removeMember(groupId, memberId) {
-  try {
-    const groupRef = doc(db, "conversations", groupId);
-    const groupSnap = await getDoc(groupRef);
-
-    if (!groupSnap.exists()) return;
-
-    const group = groupSnap.data();
-
-    if (!group.admins?.includes(currentUser.uid)) {
-      notify("Kamu bukan admin grup.");
-      return;
-    }
-
-    if (memberId === group.createdBy) {
-      notify("Pembuat grup tidak dapat dikeluarkan.");
-      return;
-    }
-
-    await updateDoc(groupRef, {
-      participants: arrayRemove(memberId),
-      updatedAt: serverTimestamp()
-    });
-
-    notify("Anggota dikeluarkan.");
-
+    showToast("Lu sudah keluar dari grup", "success");
   } catch (error) {
     console.error(error);
-    notify("Gagal mengeluarkan anggota.");
+    showToast("Gagal keluar dari grup", "error");
   }
 }
 
+createButton?.addEventListener("click", createGroup);
 
-/* =====================================
-   LEAVE GROUP
-===================================== */
-
-async function leaveGroup(groupId) {
-  try {
-    const groupRef = doc(db, "conversations", groupId);
-    const groupSnap = await getDoc(groupRef);
-
-    if (!groupSnap.exists()) return;
-
-    const group = groupSnap.data();
-
-    if (group.createdBy === currentUser.uid) {
-      notify("Pembuat grup perlu mengalihkan kepemilikan sebelum keluar.");
-      return;
-    }
-
-    await updateDoc(groupRef, {
-      participants: arrayRemove(currentUser.uid),
-      admins: arrayRemove(currentUser.uid),
-      updatedAt: serverTimestamp()
-    });
-
-    notify("Kamu telah keluar dari grup.");
-
-  } catch (error) {
-    console.error(error);
-    notify("Gagal keluar dari grup.");
-  }
-}
-
-
-/* =====================================
-   DELETE GROUP
-===================================== */
-
-async function deleteGroup(groupId) {
-  try {
-    const groupRef = doc(db, "conversations", groupId);
-    const groupSnap = await getDoc(groupRef);
-
-    if (!groupSnap.exists()) return;
-
-    const group = groupSnap.data();
-
-    if (group.createdBy !== currentUser.uid) {
-      notify("Hanya pembuat grup yang dapat menghapus grup.");
-      return;
-    }
-
-    await deleteDoc(groupRef);
-
-    notify("Grup berhasil dihapus.");
-
-  } catch (error) {
-    console.error(error);
-    notify("Gagal menghapus grup.");
-  }
-}
-
-
-/* =====================================
-   BUTTON EVENTS
-===================================== */
-
-$("#createGroupBtn")?.addEventListener(
-  "click",
-  showCreateGroupModal
-);
-
-
-/* =====================================
-   PUBLIC API
-===================================== */
-
-window.zorapGroups = {
-  loadGroups,
-  createGroup,
-  openGroup,
-  addMember,
-  removeMember,
-  leaveGroup,
-  deleteGroup,
-
-  get groups() {
-    return userGroups;
-  }
-};
-
-console.log("ZORAP Groups Engine initialized.");
+window.addEventListener("zorap:ready", loadGroups);
