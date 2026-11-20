@@ -3,19 +3,16 @@ import { auth, db, storage } from "./firebase.js";
 
 import {
   collection,
-  doc,
   addDoc,
-  getDocs,
+  doc,
   getDoc,
-  query,
-  where,
-  orderBy,
+  setDoc,
+  deleteDoc,
   onSnapshot,
-  updateDoc,
-  arrayUnion,
+  query,
+  orderBy,
   serverTimestamp,
-  Timestamp,
-  deleteDoc
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
 
 import {
@@ -25,54 +22,27 @@ import {
   deleteObject
 } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-storage.js";
 
-
-/* =====================================
-   ZORAP STATUS ENGINE
-===================================== */
-
-const $ = selector => document.querySelector(selector);
+const $ = (selector) => document.querySelector(selector);
 
 let currentUser = null;
-let currentProfile = null;
-
-let statusListener = null;
+let currentProfile = {};
 let statuses = [];
-let activeStatus = null;
+let statusListener = null;
+let activeStatusIndex = 0;
+let activeStatusGroup = [];
 
-let viewerTimer = null;
-let uploadBusy = false;
-
+const MAX_FILE_SIZE = 30 * 1024 * 1024;
 const STATUS_DURATION = 24 * 60 * 60 * 1000;
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 
-
-/* =====================================
-   INITIALIZATION
-===================================== */
-
-window.addEventListener("zorap:ready", event => {
-  currentUser = event.detail.user;
-  currentProfile = event.detail.profile;
-
-  loadStatuses();
-});
-
-
-function notify(message) {
-  window.zorapToast?.(message);
+function toast(message) {
+  if (window.zorapToast) {
+    window.zorapToast(message);
+  } else {
+    console.log(message);
+  }
 }
 
-function formatTime(timestamp) {
-  if (!timestamp?.toDate) return "";
-
-  return timestamp.toDate().toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
-function escapeText(value = "") {
+function escapeHTML(value = "") {
   return String(value).replace(/[&<>"']/g, char => ({
     "&": "&amp;",
     "<": "&lt;",
@@ -82,262 +52,202 @@ function escapeText(value = "") {
   })[char]);
 }
 
-function getExpiry() {
-  return Timestamp.fromMillis(Date.now() + STATUS_DURATION);
+function formatTime(timestamp) {
+  if (!timestamp) return "Baru saja";
+
+  const date = timestamp.toDate
+    ? timestamp.toDate()
+    : new Date(timestamp);
+
+  const diff = Date.now() - date.getTime();
+
+  if (diff < 60000) return "Baru saja";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} menit lalu`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} jam lalu`;
+
+  return date.toLocaleDateString("id-ID");
 }
 
+function getExpiryDate(status) {
+  if (status.expiresAt?.toDate) {
+    return status.expiresAt.toDate();
+  }
 
-/* =====================================
-   LOAD STATUSES
-===================================== */
+  if (status.expiresAt) {
+    return new Date(status.expiresAt);
+  }
 
-function loadStatuses() {
+  return new Date(0);
+}
+
+function isExpired(status) {
+  return getExpiryDate(status).getTime() <= Date.now();
+}
+
+function getAvatar(user) {
+  return user?.photoURL ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.ownerName || "Z")}&background=292039&color=fff`;
+}
+
+// =====================================
+// INITIALIZATION
+// =====================================
+
+window.addEventListener("zorap:ready", event => {
+  currentUser = auth.currentUser;
+  currentProfile = event.detail?.profile || {};
+
   if (!currentUser) return;
 
-  statusListener?.();
+  startStatusListener();
+  updateMyStatusProfile();
+});
+
+function updateMyStatusProfile() {
+  const avatar = getAvatar({
+    ...currentProfile,
+    ownerName: currentProfile.name || "Z"
+  });
+
+  const image = $("#statusMyAvatar");
+  if (image) image.src = avatar;
+}
+
+// =====================================
+// LISTEN TO STATUSES
+// =====================================
+
+function startStatusListener() {
+  if (statusListener) statusListener();
 
   const statusQuery = query(
     collection(db, "statuses"),
-    where("expiresAt", ">", Timestamp.now()),
-    orderBy("expiresAt", "asc")
+    orderBy("createdAt", "desc")
   );
 
-  statusListener = onSnapshot(statusQuery, async snapshot => {
-    statuses = [];
+  statusListener = onSnapshot(
+    statusQuery,
+    snapshot => {
+      statuses = snapshot.docs
+        .map(item => ({
+          id: item.id,
+          ...item.data()
+        }))
+        .filter(item => !isExpired(item));
 
-    const grouped = new Map();
-
-    for (const item of snapshot.docs) {
-      const data = item.data();
-
-      if (!data.uid || !data.mediaURL) continue;
-
-      if (!grouped.has(data.uid)) {
-        grouped.set(data.uid, []);
-      }
-
-      grouped.get(data.uid).push({
-        id: item.id,
-        ...data
-      });
+      renderStatuses();
+    },
+    error => {
+      console.error("Status listener:", error);
+      toast("Gagal memuat status.");
     }
-
-    for (const [uid, items] of grouped) {
-      const userSnap = await getDoc(doc(db, "users", uid));
-
-      const profile = userSnap.exists()
-        ? userSnap.data()
-        : {};
-
-      statuses.push({
-        uid,
-        name: profile.name || "Pengguna",
-        username: profile.username || "",
-        photoURL: profile.photoURL || "",
-        verified: profile.verified === true,
-        items: items.sort((a, b) => {
-          const first = a.createdAt?.toMillis?.() || 0;
-          const second = b.createdAt?.toMillis?.() || 0;
-          return first - second;
-        })
-      });
-    }
-
-    renderStatuses();
-
-  }, error => {
-    console.error("Status listener:", error);
-    notify("Gagal memuat status.");
-  });
+  );
 }
 
-
-/* =====================================
-   RENDER STATUS LIST
-===================================== */
+// =====================================
+// RENDER STATUS LIST
+// =====================================
 
 function renderStatuses() {
   const container = $("#statusList");
   if (!container) return;
 
-  container.replaceChildren();
+  const grouped = new Map();
 
-  const ownStatus = statuses.find(
-    item => item.uid === currentUser.uid
-  );
-
-  const others = statuses.filter(
-    item => item.uid !== currentUser.uid
-  );
-
-  const addStatusItem = (profile, isOwn = false) => {
-    const button = document.createElement("button");
-
-    button.className = "status-user";
-    button.type = "button";
-
-    const avatar = document.createElement("div");
-    avatar.className = "status-avatar";
-
-    const image = document.createElement("img");
-    image.alt = "";
-
-    image.src = profile.photoURL ||
-      profile.items?.[0]?.mediaURL ||
-      "";
-
-    if (!image.src) {
-      avatar.textContent = (profile.name || "Z")
-        .charAt(0).toUpperCase();
-    } else {
-      avatar.appendChild(image);
+  statuses.forEach(status => {
+    if (!grouped.has(status.ownerId)) {
+      grouped.set(status.ownerId, []);
     }
 
-    if (profile.items?.length) {
-      avatar.classList.add("has-status");
-
-      const unseen = profile.items.some(
-        item => !(item.viewers || []).includes(currentUser.uid)
-      );
-
-      avatar.classList.add(
-        unseen ? "status-unseen" : "status-seen"
-      );
-    }
-
-    const name = document.createElement("span");
-    name.className = "status-user-name";
-    name.textContent = isOwn ? "Status saya" : profile.name;
-
-    button.append(avatar, name);
-
-    button.addEventListener("click", () => {
-      if (isOwn && !profile.items?.length) {
-        showUploadDialog();
-      } else {
-        openStatusViewer(profile);
-      }
-    });
-
-    container.appendChild(button);
-  };
-
-  const ownProfile = {
-    uid: currentUser.uid,
-    name: currentProfile?.name || "Saya",
-    photoURL: currentProfile?.photoURL || "",
-    items: ownStatus?.items || []
-  };
-
-  addStatusItem(ownProfile, true);
-
-  others.forEach(profile => addStatusItem(profile));
-}
-
-
-/* =====================================
-   UPLOAD DIALOG
-===================================== */
-
-function showUploadDialog() {
-  const overlay = $("#modalOverlay");
-  const content = $("#modalContent");
-
-  if (!overlay || !content) return;
-
-  content.replaceChildren();
-
-  const title = document.createElement("h2");
-  title.textContent = "Buat status";
-
-  const description = document.createElement("p");
-  description.textContent =
-    "Bagikan foto atau video yang akan tersedia selama 24 jam.";
-  description.style.color = "var(--muted)";
-  description.style.fontSize = "13px";
-  description.style.margin = "10px 0 18px";
-
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = "image/jpeg,image/png,image/webp,video/mp4,video/webm";
-  input.style.width = "100%";
-
-  const caption = document.createElement("textarea");
-  caption.placeholder = "Tambahkan keterangan...";
-  caption.maxLength = 500;
-  caption.style.width = "100%";
-  caption.style.marginTop = "12px";
-
-  const submit = document.createElement("button");
-  submit.className = "primary-btn";
-  submit.textContent = "Bagikan status";
-  submit.style.width = "100%";
-  submit.style.marginTop = "15px";
-
-  submit.addEventListener("click", async () => {
-    if (!input.files?.[0]) {
-      notify("Pilih foto atau video terlebih dahulu.");
-      return;
-    }
-
-    submit.disabled = true;
-    submit.textContent = "Mengunggah...";
-
-    try {
-      await uploadStatus(input.files[0], caption.value);
-      window.zorapCloseModal?.();
-    } finally {
-      submit.disabled = false;
-      submit.textContent = "Bagikan status";
-    }
+    grouped.get(status.ownerId).push(status);
   });
 
-  content.append(title, description, input, caption, submit);
+  const otherGroups = [...grouped.entries()]
+    .filter(([ownerId]) => ownerId !== currentUser?.uid);
 
-  overlay.classList.remove("hidden");
+  if (!otherGroups.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h3>Belum ada status</h3>
+        <p>Status teman kamu akan muncul di sini.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = otherGroups.map(([ownerId, items]) => {
+    const latest = items[0];
+    const name = escapeHTML(latest.ownerName || "Pengguna");
+    const username = escapeHTML(latest.ownerUsername || "");
+    const avatar = escapeHTML(getAvatar(latest));
+    const count = items.length;
+
+    return `
+      <button class="status-item" data-status-owner="${escapeHTML(ownerId)}">
+        <div class="status-ring">
+          <img src="${avatar}" alt="">
+        </div>
+        <div class="status-item-info">
+          <strong>${name}</strong>
+          <small>@${username} · ${formatTime(latest.createdAt)}</small>
+        </div>
+        <span class="status-count">${count}</span>
+      </button>
+    `;
+  }).join("");
 }
 
+// =====================================
+// UPLOAD STATUS
+// =====================================
 
-/* =====================================
-   UPLOAD STATUS
-===================================== */
-
-async function uploadStatus(file, caption = "") {
-  if (!currentUser || uploadBusy) return;
-
-  const isImage = file.type.startsWith("image/");
-  const isVideo = file.type.startsWith("video/");
-
-  if (!isImage && !isVideo) {
-    notify("Format file tidak didukung.");
+function openStatusPicker() {
+  if (!currentUser) {
+    toast("Silakan login terlebih dahulu.");
     return;
   }
 
-  if (isImage && file.size > MAX_IMAGE_SIZE) {
-    notify("Foto maksimal 10 MB.");
+  $("#statusFileInput")?.click();
+}
+
+$("#createStatusBtn")?.addEventListener("click", openStatusPicker);
+$("#addStatusBtn")?.addEventListener("click", openStatusPicker);
+
+$("#statusFileInput")?.addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  event.target.value = "";
+
+  if (!file.type.startsWith("image/") &&
+      !file.type.startsWith("video/")) {
+    toast("Pilih file foto atau video.");
     return;
   }
 
-  if (isVideo && file.size > MAX_VIDEO_SIZE) {
-    notify("Video maksimal 50 MB.");
+  if (file.size > MAX_FILE_SIZE) {
+    toast("Ukuran file maksimal 30 MB.");
     return;
   }
 
-  if (isVideo && !["video/mp4", "video/webm"].includes(file.type)) {
-    notify("Format video harus MP4 atau WebM.");
-    return;
-  }
+  await uploadStatus(file);
+});
 
-  uploadBusy = true;
+async function uploadStatus(file) {
+  if (!currentUser) return;
+
+  const uploadButton = $("#createStatusBtn");
 
   try {
-    const fileExtension = file.name.split(".").pop()
-      .replace(/[^a-zA-Z0-9]/g, "");
+    if (uploadButton) {
+      uploadButton.disabled = true;
+      uploadButton.textContent = "Mengunggah...";
+    }
 
-    const fileName = `${crypto.randomUUID()}.${fileExtension}`;
-
-    const storagePath =
-      `statuses/${currentUser.uid}/${fileName}`;
+    const extension = file.name.split(".").pop() || "file";
+    const filename = `${Date.now()}_${crypto.randomUUID()}.${extension}`;
+    const storagePath = `statuses/${currentUser.uid}/${filename}`;
 
     const storageRef = ref(storage, storagePath);
 
@@ -345,365 +255,333 @@ async function uploadStatus(file, caption = "") {
       contentType: file.type
     });
 
-    const mediaURL = await getDownloadURL(storageRef);
+    const mediaUrl = await getDownloadURL(storageRef);
+
+    const caption = await askCaption();
+
+    const expiresAt = Timestamp.fromDate(
+      new Date(Date.now() + STATUS_DURATION)
+    );
 
     await addDoc(collection(db, "statuses"), {
-      uid: currentUser.uid,
-      mediaURL,
-      storagePath,
-      mediaType: isImage ? "image" : "video",
-      caption: caption.trim().slice(0, 500),
+      ownerId: currentUser.uid,
+      ownerName: currentProfile.name || currentUser.displayName || "Pengguna",
+      ownerUsername: currentProfile.username || "",
+      ownerPhotoURL: currentProfile.photoURL || currentUser.photoURL || "",
+      mediaUrl,
+      mediaPath: storagePath,
+      mediaType: file.type.startsWith("video/") ? "video" : "image",
+      caption,
       createdAt: serverTimestamp(),
-      expiresAt: getExpiry(),
-      viewers: []
+      expiresAt
     });
 
-    notify("Status berhasil dibagikan.");
-
+    toast("Status berhasil dibagikan.");
   } catch (error) {
     console.error("Upload status:", error);
-    notify("Gagal mengunggah status.");
+    toast("Gagal mengunggah status: " + error.message);
   } finally {
-    uploadBusy = false;
+    if (uploadButton) {
+      uploadButton.disabled = false;
+      uploadButton.textContent = "Create status";
+    }
   }
 }
 
+// =====================================
+// CAPTION MODAL
+// =====================================
 
-/* =====================================
-   STATUS VIEWER
-===================================== */
+function askCaption() {
+  return new Promise(resolve => {
+    const overlay = $("#modalOverlay");
+    const content = $("#modalContent");
 
-function openStatusViewer(profile) {
-  if (!profile?.items?.length) return;
-
-  activeStatus = {
-    ...profile,
-    index: 0
-  };
-
-  const overlay = $("#statusViewer");
-  if (!overlay) {
-    notify("Elemen statusViewer belum tersedia di HTML.");
-    return;
-  }
-
-  overlay.classList.remove("hidden");
-  showCurrentStatus();
-}
-
-
-/* =====================================
-   SHOW CURRENT STATUS
-===================================== */
-
-async function showCurrentStatus() {
-  if (!activeStatus) return;
-
-  const item = activeStatus.items[activeStatus.index];
-
-  if (!item) {
-    closeStatusViewer();
-    return;
-  }
-
-  const media = $("#statusMedia");
-  const caption = $("#statusCaption");
-  const name = $("#statusViewerName");
-  const avatar = $("#statusViewerAvatar");
-  const time = $("#statusViewerTime");
-  const progress = $("#statusProgress");
-  const deleteButton = $("#deleteStatusBtn");
-  const viewersButton = $("#statusViewersBtn");
-
-  if (!media) return;
-
-  clearTimeout(viewerTimer);
-
-  media.replaceChildren();
-
-  const element = document.createElement(
-    item.mediaType === "video" ? "video" : "img"
-  );
-
-  element.src = item.mediaURL;
-
-  if (item.mediaType === "video") {
-    element.autoplay = true;
-    element.controls = true;
-    element.playsInline = true;
-  } else {
-    element.alt = "Status";
-  }
-
-  media.appendChild(element);
-
-  if (caption) caption.textContent = item.caption || "";
-
-  if (name) name.textContent = activeStatus.name;
-
-  if (avatar) {
-    avatar.textContent = (activeStatus.name || "Z")
-      .charAt(0).toUpperCase();
-  }
-
-  if (time) time.textContent = formatTime(item.createdAt);
-
-  if (deleteButton) {
-    deleteButton.classList.toggle(
-      "hidden",
-      activeStatus.uid !== currentUser.uid
-    );
-  }
-
-  if (viewersButton) {
-    viewersButton.classList.toggle(
-      "hidden",
-      activeStatus.uid !== currentUser.uid
-    );
-  }
-
-  renderStatusProgress();
-
-  if (activeStatus.uid !== currentUser.uid) {
-    markStatusViewed(item.id);
-  }
-
-  if (item.mediaType === "image") {
-    viewerTimer = setTimeout(nextStatus, 5000);
-  } else {
-    element.addEventListener("ended", nextStatus, { once: true });
-  }
-}
-
-
-/* =====================================
-   STATUS PROGRESS
-===================================== */
-
-function renderStatusProgress() {
-  const container = $("#statusProgress");
-  if (!container || !activeStatus) return;
-
-  container.replaceChildren();
-
-  activeStatus.items.forEach((item, index) => {
-    const segment = document.createElement("div");
-    segment.className = "status-progress-segment";
-
-    const fill = document.createElement("div");
-    fill.className = "status-progress-fill";
-
-    if (index < activeStatus.index) {
-      fill.style.width = "100%";
+    if (!overlay || !content) {
+      resolve("");
+      return;
     }
 
-    if (index === activeStatus.index) {
-      fill.style.width = "100%";
-      fill.style.animation = "statusProgress 5s linear forwards";
-    }
+    content.innerHTML = `
+      <button class="modal-close" id="captionCancel">×</button>
+      <div class="modal-heading">
+        <h2>Tambah caption</h2>
+        <p>Tulis sesuatu untuk status kamu.</p>
+      </div>
 
-    segment.appendChild(fill);
-    container.appendChild(segment);
+      <textarea
+        id="statusCaptionInput"
+        maxlength="300"
+        placeholder="Tulis caption..."
+        rows="4"
+      ></textarea>
+
+      <div class="modal-actions">
+        <button class="secondary-button" id="captionSkip">Lewati</button>
+        <button class="primary-button" id="captionPublish">Bagikan</button>
+      </div>
+    `;
+
+    overlay.classList.remove("hidden");
+
+    const finish = value => {
+      overlay.classList.add("hidden");
+      content.innerHTML = "";
+      resolve(value);
+    };
+
+    $("#captionCancel").onclick = () => finish("");
+    $("#captionSkip").onclick = () => finish("");
+
+    $("#captionPublish").onclick = () => {
+      finish($("#statusCaptionInput")?.value.trim() || "");
+    };
   });
 }
 
+// =====================================
+// OPEN STATUS VIEWER
+// =====================================
 
-/* =====================================
-   NEXT / PREVIOUS
-===================================== */
+$("#statusList")?.addEventListener("click", event => {
+  const button = event.target.closest("[data-status-owner]");
+  if (!button) return;
 
-function nextStatus() {
-  if (!activeStatus) return;
+  const ownerId = button.dataset.statusOwner;
 
-  if (activeStatus.index < activeStatus.items.length - 1) {
-    activeStatus.index++;
-    showCurrentStatus();
-  } else {
+  activeStatusGroup = statuses.filter(
+    status => status.ownerId === ownerId
+  );
+
+  activeStatusIndex = 0;
+  showStatus();
+});
+
+$("#myStatusCard")?.addEventListener("click", event => {
+  if (event.target.closest("#addStatusBtn")) return;
+
+  activeStatusGroup = statuses.filter(
+    status => status.ownerId === currentUser?.uid
+  );
+
+  if (!activeStatusGroup.length) {
+    openStatusPicker();
+    return;
+  }
+
+  activeStatusIndex = 0;
+  showStatus();
+});
+
+async function showStatus() {
+  const viewer = $("#statusViewer");
+  const content = $("#statusViewerContent");
+  const info = $("#statusViewerInfo");
+
+  if (!viewer || !content || !info) return;
+
+  const status = activeStatusGroup[activeStatusIndex];
+
+  if (!status) {
     closeStatusViewer();
+    return;
   }
+
+  viewer.classList.remove("hidden");
+
+  const isMine = status.ownerId === currentUser?.uid;
+  const name = escapeHTML(status.ownerName || "Pengguna");
+  const caption = escapeHTML(status.caption || "");
+  const avatar = escapeHTML(getAvatar({
+    photoURL: status.ownerPhotoURL,
+    ownerName: status.ownerName
+  }));
+
+  const media = status.mediaType === "video"
+    ? `<video src="${escapeHTML(status.mediaUrl)}" controls autoplay playsinline></video>`
+    : `<img src="${escapeHTML(status.mediaUrl)}" alt="Status">`;
+
+  content.innerHTML = `
+    <div class="status-progress">
+      ${activeStatusGroup.map((_, index) => `
+        <span class="${index <= activeStatusIndex ? "completed" : ""}"></span>
+      `).join("")}
+    </div>
+
+    <div class="status-viewer-header">
+      <img src="${avatar}" alt="">
+      <div>
+        <strong>${name}</strong>
+        <small>${formatTime(status.createdAt)}</small>
+      </div>
+    </div>
+
+    <div class="status-media">
+      ${media}
+    </div>
+
+    ${caption ? `<p class="status-caption">${caption}</p>` : ""}
+  `;
+
+  info.innerHTML = `
+    ${isMine
+      ? `<button class="secondary-button" id="statusViewersBtn">Lihat penonton</button>
+         <button class="danger-button" id="deleteMyStatusBtn">Hapus status</button>`
+      : ""}
+    <button class="icon-button" id="previousStatusBtn" ${activeStatusIndex === 0 ? "disabled" : ""}>←</button>
+    <button class="icon-button" id="nextStatusBtn">→</button>
+  `;
+
+  if (!isMine) {
+    await recordStatusView(status);
+  }
+
+  $("#previousStatusBtn").onclick = () => {
+    if (activeStatusIndex > 0) {
+      activeStatusIndex--;
+      showStatus();
+    }
+  };
+
+  $("#nextStatusBtn").onclick = () => {
+    if (activeStatusIndex < activeStatusGroup.length - 1) {
+      activeStatusIndex++;
+      showStatus();
+    } else {
+      closeStatusViewer();
+    }
+  };
+
+  $("#deleteMyStatusBtn")?.addEventListener("click", deleteCurrentStatus);
+  $("#statusViewersBtn")?.addEventListener("click", showStatusViewers);
 }
 
-function previousStatus() {
-  if (!activeStatus) return;
-
-  if (activeStatus.index > 0) {
-    activeStatus.index--;
-    showCurrentStatus();
-  }
-}
-
-
-/* =====================================
-   VIEW STATUS
-===================================== */
-
-async function markStatusViewed(statusId) {
-  if (!currentUser) return;
+async function recordStatusView(status) {
+  if (!currentUser || status.ownerId === currentUser.uid) return;
 
   try {
-    await updateDoc(
-      doc(db, "statuses", statusId),
+    await setDoc(
+      doc(db, "statuses", status.id, "views", currentUser.uid),
       {
-        viewers: arrayUnion(currentUser.uid)
-      }
+        userId: currentUser.uid,
+        username: currentProfile.username || "",
+        viewedAt: serverTimestamp()
+      },
+      { merge: true }
     );
   } catch (error) {
-    console.error("Mark viewed:", error);
+    console.error("Record status view:", error);
   }
 }
 
-
-/* =====================================
-   VIEWERS
-===================================== */
+// =====================================
+// VIEW STATUS VIEWERS
+// =====================================
 
 async function showStatusViewers() {
-  if (!activeStatus) return;
-
-  const item = activeStatus.items[activeStatus.index];
-
-  const overlay = $("#modalOverlay");
-  const content = $("#modalContent");
-
-  if (!overlay || !content) return;
-
-  content.replaceChildren();
-
-  const title = document.createElement("h2");
-  title.textContent = "Dilihat oleh";
-
-  const viewers = item.viewers || [];
-
-  const description = document.createElement("p");
-  description.textContent = `${viewers.length} penonton`;
-  description.style.color = "var(--muted)";
-
-  content.append(title, description);
-
-  for (const uid of viewers) {
-    const profile = await getDoc(doc(db, "users", uid));
-
-    const user = profile.exists() ? profile.data() : {};
-
-    const row = document.createElement("div");
-    row.className = "setting-item";
-    row.textContent = user.name || "Pengguna ZORAP";
-
-    content.appendChild(row);
-  }
-
-  overlay.classList.remove("hidden");
-}
-
-
-/* =====================================
-   DELETE STATUS
-===================================== */
-
-async function deleteStatus() {
-  if (!activeStatus || activeStatus.uid !== currentUser.uid) return;
-
-  const item = activeStatus.items[activeStatus.index];
+  const status = activeStatusGroup[activeStatusIndex];
+  if (!status || status.ownerId !== currentUser?.uid) return;
 
   try {
-    await deleteDoc(doc(db, "statuses", item.id));
+    const { getDocs } = await import(
+      "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js"
+    );
 
-    if (item.storagePath) {
+    const snapshot = await getDocs(
+      collection(db, "statuses", status.id, "views")
+    );
+
+    const names = snapshot.docs.map(item => {
+      const data = item.data();
+      return escapeHTML(data.username || data.userId || "Pengguna");
+    });
+
+    const content = $("#modalContent");
+    const overlay = $("#modalOverlay");
+
+    if (!content || !overlay) return;
+
+    content.innerHTML = `
+      <button class="modal-close" id="closeViewerList">×</button>
+      <h2>Penonton status</h2>
+      <p>${names.length} orang melihat status ini.</p>
+      <div class="viewer-list">
+        ${names.length
+          ? names.map(name => `<div class="viewer-list-item">${name}</div>`).join("")
+          : "<p>Belum ada yang melihat status ini.</p>"}
+      </div>
+    `;
+
+    overlay.classList.remove("hidden");
+    $("#closeViewerList").onclick = () => {
+      overlay.classList.add("hidden");
+      showStatus();
+    };
+  } catch (error) {
+    console.error(error);
+    toast("Gagal memuat penonton.");
+  }
+}
+
+// =====================================
+// DELETE OWN STATUS
+// =====================================
+
+async function deleteCurrentStatus() {
+  const status = activeStatusGroup[activeStatusIndex];
+
+  if (!status || status.ownerId !== currentUser?.uid) return;
+
+  const confirmed = confirm("Hapus status ini?");
+
+  if (!confirmed) return;
+
+  try {
+    await deleteDoc(doc(db, "statuses", status.id));
+
+    if (status.mediaPath) {
       try {
-        await deleteObject(ref(storage, item.storagePath));
+        await deleteObject(ref(storage, status.mediaPath));
       } catch (storageError) {
-        console.error("Storage cleanup:", storageError);
+        console.warn("File status tidak berhasil dihapus:", storageError);
       }
     }
 
-    notify("Status berhasil dihapus.");
-
-    if (activeStatus.items.length <= 1) {
-      closeStatusViewer();
-    } else {
-      activeStatus.items.splice(activeStatus.index, 1);
-      activeStatus.index = Math.min(
-        activeStatus.index,
-        activeStatus.items.length - 1
-      );
-
-      showCurrentStatus();
-    }
-
+    toast("Status berhasil dihapus.");
+    closeStatusViewer();
   } catch (error) {
     console.error("Delete status:", error);
-    notify("Gagal menghapus status.");
+    toast("Gagal menghapus status.");
   }
 }
 
-
-/* =====================================
-   CLOSE VIEWER
-===================================== */
+// =====================================
+// CLOSE VIEWER
+// =====================================
 
 function closeStatusViewer() {
-  clearTimeout(viewerTimer);
+  const viewer = $("#statusViewer");
+  const content = $("#statusViewerContent");
+  const info = $("#statusViewerInfo");
 
-  activeStatus = null;
+  viewer?.classList.add("hidden");
 
-  const overlay = $("#statusViewer");
-  overlay?.classList.add("hidden");
+  if (content) content.innerHTML = "";
+  if (info) info.innerHTML = "";
 
-  const media = $("#statusMedia");
-  if (media) media.replaceChildren();
+  activeStatusGroup = [];
+  activeStatusIndex = 0;
 }
 
+$("#closeStatusViewer")?.addEventListener("click", closeStatusViewer);
 
-/* =====================================
-   EVENTS
-===================================== */
-
-$("#createStatusBtn")?.addEventListener(
-  "click",
-  showUploadDialog
-);
-
-$("#statusPrevious")?.addEventListener(
-  "click",
-  previousStatus
-);
-
-$("#statusNext")?.addEventListener(
-  "click",
-  nextStatus
-);
-
-$("#closeStatusViewer")?.addEventListener(
-  "click",
-  closeStatusViewer
-);
-
-$("#deleteStatusBtn")?.addEventListener(
-  "click",
-  deleteStatus
-);
-
-$("#statusViewersBtn")?.addEventListener(
-  "click",
-  showStatusViewers
-);
-
-
-/* =====================================
-   PUBLIC API
-===================================== */
+// =====================================
+// PUBLIC API
+// =====================================
 
 window.zorapStatus = {
-  loadStatuses,
   uploadStatus,
-  openStatusViewer,
+  openStatusPicker,
   closeStatusViewer,
-  nextStatus,
-  previousStatus,
-
-  get statuses() {
-    return statuses;
-  }
+  refresh: startStatusListener
 };
-
-console.log("ZORAP Status Engine initialized.");
