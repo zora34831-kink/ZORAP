@@ -1,0 +1,364 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0d0b14">
+  <title>ZORAP — Administrator</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/admin.css">
+</head>
+
+<body class="admin-body">
+
+<div class="admin-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <div class="admin-brand">
+      <div class="brand-logo">Z</div>
+      <div>
+        <strong>ZORAP</strong>
+        <small>ADMINISTRATION</small>
+      </div>
+    </div>
+
+    <div class="admin-profile">
+      <div class="admin-avatar">A</div>
+      <div>
+        <strong id="adminName">Administrator</strong>
+        <small id="adminRole">Admin</small>
+      </div>
+      <span class="admin-online"></span>
+    </div>
+
+    <div class="admin-nav-label">WORKSPACE</div>
+
+    <nav class="admin-navigation">
+      <button class="admin-nav-item active" data-admin-page="overview">
+        <span>▦</span> Overview
+      </button>
+
+      <button class="admin-nav-item" data-admin-page="users">
+        <span>♙</span> User Management
+      </button>
+
+      <button class="admin-nav-item" data-admin-page="verification">
+        <span>✓</span> Verification
+      </button>
+
+      <button class="admin-nav-item" data-admin-page="suspensions">
+        <span>⊘</span> Suspensions
+      </button>
+
+      <button class="admin-nav-item" data-admin-page="appeals">
+        <span>▤</span> Appeals
+        <span class="admin-nav-count" id="appealNavCount">0</span>
+      </button>
+
+      <button class="admin-nav-item" data-admin-page="logs">
+        <span>◷</span> Activity Logs
+      </button>
+    </nav>
+
+    <div class="admin-sidebar-bottom">
+      <button id="adminRefreshBtn">↻ Refresh data</button>
+      <button id="adminLogoutBtn">⇥ Logout</button>
+      <a href="./app.html">← Back to ZORAP</a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="admin-main">
+
+    <header class="admin-topbar">
+      <div>
+        <div class="admin-breadcrumb">ZORAP / <span id="adminBreadcrumb">Overview</span></div>
+        <h1 id="adminPageTitle">Dashboard overview</h1>
+        <p>Monitor and manage your ZORAP platform.</p>
+      </div>
+
+      <div class="admin-top-actions">
+        <span class="admin-live-indicator">SYSTEM ONLINE</span>
+        <button class="admin-icon-button" id="adminProfileBtn">A</button>
+      </div>
+    </header>
+
+    <!-- OVERVIEW -->
+    <section class="admin-page" id="adminOverviewPage">
+
+      <div class="admin-welcome">
+        <div>
+          <span>ADMINISTRATOR WORKSPACE</span>
+          <h2>Welcome back, <strong id="overviewAdminName">Admin</strong>.</h2>
+          <p>Here is what's happening across ZORAP today.</p>
+        </div>
+        <div class="admin-welcome-mark">Z</div>
+      </div>
+
+      <div class="admin-stats-grid">
+
+        <article class="admin-stat-card">
+          <div class="admin-stat-top">
+            <span>Total users</span>
+            <span class="admin-stat-icon">♙</span>
+          </div>
+          <strong id="totalUsers">0</strong>
+          <small>Registered accounts</small>
+        </article>
+
+        <article class="admin-stat-card">
+          <div class="admin-stat-top">
+            <span>Verified users</span>
+            <span class="admin-stat-icon">✓</span>
+          </div>
+          <strong id="verifiedUsers">0</strong>
+          <small>Verified accounts</small>
+        </article>
+
+        <article class="admin-stat-card">
+          <div class="admin-stat-top">
+            <span>Suspended</span>
+            <span class="admin-stat-icon">⊘</span>
+          </div>
+          <strong id="suspendedUsers">0</strong>
+          <small>Restricted accounts</small>
+        </article>
+
+        <article class="admin-stat-card">
+          <div class="admin-stat-top">
+            <span>Pending appeals</span>
+            <span class="admin-stat-icon">▤</span>
+          </div>
+          <strong id="pendingAppeals">0</strong>
+          <small>Awaiting review</small>
+        </article>
+
+      </div>
+
+      <div class="admin-content-grid">
+
+        <section class="admin-panel">
+          <div class="admin-panel-heading">
+            <div>
+              <h3>Recent users</h3>
+              <p>Recently registered accounts</p>
+            </div>
+            <button class="admin-text-button" data-open-page="users">View all →</button>
+          </div>
+
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Status</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody id="recentUsersTable">
+                <tr>
+                  <td colspan="3">Loading users...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="admin-panel">
+          <div class="admin-panel-heading">
+            <div>
+              <h3>System status</h3>
+              <p>Application services</p>
+            </div>
+          </div>
+
+          <div class="system-status-list">
+            <div><span>Firebase Authentication</span><strong>Connected</strong></div>
+            <div><span>Cloud Firestore</span><strong>Connected</strong></div>
+            <div><span>Firebase Storage</span><strong>Configured</strong></div>
+            <div><span>Administrator access</span><strong id="adminAccessStatus">Checking</strong></div>
+          </div>
+        </section>
+
+      </div>
+    </section>
+
+    <!-- USERS -->
+    <section class="admin-page hidden" id="adminUsersPage">
+
+      <div class="admin-section-heading">
+        <div>
+          <h2>User Management</h2>
+          <p>Search and manage registered ZORAP accounts.</p>
+        </div>
+      </div>
+
+      <div class="admin-toolbar">
+        <div class="admin-search">
+          <span>⌕</span>
+          <input id="adminUserSearch" type="search" placeholder="Search username, name or email...">
+        </div>
+
+        <select id="adminUserFilter">
+          <option value="all">All users</option>
+          <option value="verified">Verified</option>
+          <option value="unverified">Unverified</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th>Username</th>
+                <th>Verification</th>
+                <th>Status</th>
+                <th>Role</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="adminUsersTable">
+              <tr><td colspan="6">Loading users...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- VERIFICATION -->
+    <section class="admin-page hidden" id="adminVerificationPage">
+      <div class="admin-section-heading">
+        <div>
+          <h2>Verification Management</h2>
+          <p>Grant or revoke the ZORAP verified badge.</p>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-toolbar">
+          <div class="admin-search">
+            <span>⌕</span>
+            <input id="verificationSearch" placeholder="Search account...">
+          </div>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th>Username</th>
+                <th>Verification</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="verificationTable">
+              <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- SUSPENSIONS -->
+    <section class="admin-page hidden" id="adminSuspensionsPage">
+      <div class="admin-section-heading">
+        <div>
+          <h2>Suspension Management</h2>
+          <p>Review restricted accounts and their status.</p>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th>Type</th>
+                <th>Reason</th>
+                <th>Expiry</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="suspensionsTable">
+              <tr><td colspan="5">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- APPEALS -->
+    <section class="admin-page hidden" id="adminAppealsPage">
+      <div class="admin-section-heading">
+        <div>
+          <h2>Appeal Center</h2>
+          <p>Review temporary suspension appeals.</p>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Appeal ID</th>
+                <th>User</th>
+                <th>Submitted</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="appealsTable">
+              <tr><td colspan="5">Loading appeals...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOGS -->
+    <section class="admin-page hidden" id="adminLogsPage">
+      <div class="admin-section-heading">
+        <div>
+          <h2>Activity Logs</h2>
+          <p>Administrator activity records.</p>
+        </div>
+      </div>
+
+      <div class="admin-panel">
+        <div id="adminLogsList" class="admin-logs-list">
+          <p>Loading activity...</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ADMIN MODAL -->
+<div class="modal-overlay hidden" id="adminModal">
+  <div class="modal-content admin-modal-content" id="adminModalContent">
+    <button class="modal-close" id="adminModalClose">×</button>
+    <div id="adminModalBody"></div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script type="module" src="./js/admin.js"></script>
+
+</body>
+</html>
