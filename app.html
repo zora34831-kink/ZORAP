@@ -4,686 +4,390 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#0c0b12">
-  <meta name="description" content="ZORAP — Connect beyond boundaries.">
-
+  <meta name="theme-color" content="#0d0b14">
   <title>ZORAP — Messaging</title>
-
-  <link rel="icon" href="./assets/icon.png">
-  <link rel="stylesheet" href="./css/style.css">
-  <link rel="stylesheet" href="./css/chat.css">
-
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/chat.css">
 </head>
 
 <body>
+  <div class="app-shell">
 
-<!-- =================================
-     APPLICATION
-================================== -->
-
-<div id="app" class="app-shell">
-
-  <!-- SIDEBAR -->
-
-  <aside class="sidebar">
-
-    <div class="brand">
-      <div class="brand-logo">Z</div>
-      <div class="brand-name">ZORAP</div>
-    </div>
-
-    <div class="sidebar-profile" id="openMyProfile">
-      <div class="avatar">
-        <img id="myAvatar" src="" alt="">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">Z</div>
+        <div class="brand-name">ZORAP</div>
       </div>
 
-      <div class="sidebar-profile-info">
-        <strong id="myName">Memuat...</strong>
-        <span id="myUsername">@username</span>
+      <div class="sidebar-profile">
+        <img id="myAvatar" src="https://ui-avatars.com/api/?name=Z&background=292039&color=fff" alt="Avatar">
+        <div class="profile-info">
+          <strong id="myName">Memuat...</strong>
+          <span id="myUsername">@username</span>
+        </div>
+        <button class="icon-button" id="openMyProfile" title="Profil">•••</button>
       </div>
 
-      <button id="moreMenuBtn" class="icon-btn" aria-label="Menu lainnya">
-        <svg viewBox="0 0 24 24" fill="none">
-          <circle cx="5" cy="12" r="1.5"/>
-          <circle cx="12" cy="12" r="1.5"/>
-          <circle cx="19" cy="12" r="1.5"/>
-        </svg>
-      </button>
-    </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-page="chats">
+          <span class="nav-symbol">▤</span>
+          <span>Chats</span>
+        </button>
+        <button class="nav-item" data-page="updates">
+          <span class="nav-symbol">◉</span>
+          <span>Updates</span>
+        </button>
+        <button class="nav-item" data-page="groups">
+          <span class="nav-symbol">▧</span>
+          <span>Groups</span>
+        </button>
+        <button class="nav-item" data-page="contacts">
+          <span class="nav-symbol">♙</span>
+          <span>Contacts</span>
+        </button>
+        <button class="nav-item" data-page="calls">
+          <span class="nav-symbol">⌕</span>
+          <span>Calls</span>
+        </button>
+        <button class="nav-item" data-page="settings">
+          <span class="nav-symbol">⚙</span>
+          <span>Settings</span>
+        </button>
+      </nav>
 
-    <div class="sidebar-search">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="11" cy="11" r="7"/>
-        <path d="m16 16 4 4"/>
-      </svg>
-      <input id="chatSearch" type="search" placeholder="Cari percakapan...">
-    </div>
+      <div class="sidebar-footer">
+        <span class="online-indicator"></span>
+        <span>Connected to ZORAP</span>
+      </div>
+    </aside>
 
-    <nav class="sidebar-nav">
+    <!-- MAIN -->
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <h1 id="pageTitle">Chats</h1>
+          <p class="topbar-subtitle">Your conversations, all in one place.</p>
+        </div>
 
+        <div class="topbar-actions">
+          <button class="icon-button" id="globalSearchBtn" title="Search">⌕</button>
+          <button class="icon-button" id="themeToggle" title="Ganti tema">
+            <span id="themeIcon">☾</span>
+          </button>
+          <button class="primary-button" id="newChatBtn">New chat</button>
+        </div>
+      </header>
+
+      <!-- CHATS PAGE -->
+      <section class="page-content" id="welcomePanel">
+        <div class="chat-layout">
+
+          <section class="chat-list-panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Messages</h2>
+                <p>Your recent conversations</p>
+              </div>
+              <button class="icon-button" id="moreMenuBtn">•••</button>
+            </div>
+
+            <div class="search-box">
+              <span>⌕</span>
+              <input id="chatSearch" type="search" placeholder="Search conversations...">
+            </div>
+
+            <div class="chat-filter">
+              <button class="filter-chip active" data-filter="all">All</button>
+              <button class="filter-chip" data-filter="unread">Unread</button>
+              <button class="filter-chip" data-filter="groups">Groups</button>
+            </div>
+
+            <div class="chat-list" id="chatList">
+              <div class="empty-state">
+                <div class="empty-state-icon">Z</div>
+                <h3>No conversations yet</h3>
+                <p>Start a conversation with someone.</p>
+                <button class="primary-button" id="emptyNewChatBtn">Start chatting</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ACTIVE CHAT -->
+          <section class="chat-view hidden" id="chatView">
+            <header class="conversation-header" id="conversationHeader">
+              <button class="icon-button mobile-back-button" id="mobileBackBtn">←</button>
+              <div class="conversation-avatar">
+                <img id="conversationAvatar" src="https://ui-avatars.com/api/?name=Z&background=292039&color=fff" alt="">
+              </div>
+              <div class="conversation-user">
+                <strong id="conversationName">Conversation</strong>
+                <span id="conversationStatus">Offline</span>
+              </div>
+              <div class="conversation-actions">
+                <button class="icon-button" id="chatSearchBtn" title="Search messages">⌕</button>
+                <button class="icon-button" id="conversationMenuBtn" title="More">•••</button>
+              </div>
+            </header>
+
+            <div class="message-history" id="messageHistory">
+              <div class="message-empty">
+                <span class="message-empty-logo">Z</span>
+                <p>Send a message to start the conversation.</p>
+              </div>
+            </div>
+
+            <div class="typing-indicator hidden" id="typingIndicator">
+              <span></span><span></span><span></span>
+              <small>Typing...</small>
+            </div>
+
+            <form class="message-composer" id="messageForm">
+              <button type="button" class="icon-button" id="attachFileBtn" title="Attach">＋</button>
+              <input id="messageInput" type="text" placeholder="Write a message..." autocomplete="off">
+              <button type="button" class="icon-button" id="emojiBtn" title="Emoji">☺</button>
+              <button type="submit" class="send-button" id="sendMessageBtn" title="Send">
+                <span>Send</span>
+              </button>
+            </form>
+          </section>
+
+        </div>
+      </section>
+
+      <!-- UPDATES PAGE -->
+      <section class="page-content hidden" id="updatesPage">
+        <div class="section-heading">
+          <div>
+            <h2>Updates</h2>
+            <p>Share moments with your contacts.</p>
+          </div>
+          <button class="primary-button" id="createStatusBtn">Create status</button>
+        </div>
+
+        <div class="status-own-card" id="myStatusCard">
+          <div class="status-avatar">
+            <img id="statusMyAvatar" src="https://ui-avatars.com/api/?name=Z&background=292039&color=fff" alt="">
+          </div>
+          <div>
+            <strong>My status</strong>
+            <p>Share a photo or video</p>
+          </div>
+          <button class="icon-button" id="addStatusBtn">＋</button>
+        </div>
+
+        <div class="content-card">
+          <h3>Recent updates</h3>
+          <div class="status-list" id="statusList">
+            <div class="empty-state">
+              <h3>No updates yet</h3>
+              <p>Status from your contacts will appear here.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="status-viewer hidden" id="statusViewer">
+          <button class="icon-button status-viewer-close" id="closeStatusViewer">×</button>
+          <div id="statusViewerContent"></div>
+          <div id="statusViewerInfo"></div>
+        </div>
+      </section>
+
+      <!-- GROUPS PAGE -->
+      <section class="page-content hidden" id="groupsPage">
+        <div class="section-heading">
+          <div>
+            <h2>Groups</h2>
+            <p>Connect with multiple people.</p>
+          </div>
+          <button class="primary-button" id="createGroupBtn">Create group</button>
+        </div>
+
+        <div class="content-card">
+          <div class="group-list" id="groupsList">
+            <div class="empty-state">
+              <h3>No groups yet</h3>
+              <p>Create a group to start chatting together.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONTACTS PAGE -->
+      <section class="page-content hidden" id="contactsPage">
+        <div class="section-heading">
+          <div>
+            <h2>Contacts</h2>
+            <p>Find and manage your contacts.</p>
+          </div>
+          <button class="primary-button" id="addContactBtn">Add contact</button>
+        </div>
+
+        <div class="search-box">
+          <span>⌕</span>
+          <input id="contactSearchInput" type="search" placeholder="Search contacts...">
+          <button class="icon-button" id="contactSearchBtn">Search</button>
+        </div>
+
+        <div id="contactSearchResults"></div>
+
+        <div class="content-card">
+          <div class="contacts-list" id="contactsList">
+            <div class="empty-state">
+              <h3>No contacts saved</h3>
+              <p>Add someone using their ZORAP username.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CALLS PAGE -->
+      <section class="page-content hidden" id="callsPage">
+        <div class="section-heading">
+          <div>
+            <h2>Calls</h2>
+            <p>Your recent call activity.</p>
+          </div>
+        </div>
+        <div class="content-card">
+          <div class="empty-state">
+            <h3>Call history</h3>
+            <p>Your call history will appear here when calling is connected.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS PAGE -->
+      <section class="page-content hidden" id="settingsPage">
+        <div class="section-heading">
+          <div>
+            <h2>Settings</h2>
+            <p>Manage your ZORAP experience.</p>
+          </div>
+        </div>
+
+        <div class="settings-profile-card" id="settingsProfile">
+          <img id="settingsAvatar" src="https://ui-avatars.com/api/?name=Z&background=292039&color=fff" alt="">
+          <div>
+            <strong id="settingsName">Your name</strong>
+            <p id="settingsUsername">@username</p>
+          </div>
+          <button class="icon-button" id="openSettingsProfile">→</button>
+        </div>
+
+        <div class="settings-list">
+          <button class="settings-item" data-setting="account">
+            <span class="settings-item-icon">◉</span>
+            <span><strong>Account</strong><small>Profile and account information</small></span>
+            <span>›</span>
+          </button>
+
+          <button class="settings-item" data-setting="privacy">
+            <span class="settings-item-icon">◇</span>
+            <span><strong>Privacy</strong><small>Last seen, online and read receipts</small></span>
+            <span>›</span>
+          </button>
+
+          <button class="settings-item" data-setting="chats">
+            <span class="settings-item-icon">▤</span>
+            <span><strong>Chats</strong><small>Chat preferences</small></span>
+            <span>›</span>
+          </button>
+
+          <button class="settings-item" data-setting="notifications">
+            <span class="settings-item-icon">♧</span>
+            <span><strong>Notifications</strong><small>Message and group alerts</small></span>
+            <span>›</span>
+          </button>
+
+          <button class="settings-item" data-setting="appearance">
+            <span class="settings-item-icon">◐</span>
+            <span><strong>Appearance</strong><small>Dark, light and system theme</small></span>
+            <span>›</span>
+          </button>
+
+          <button class="settings-item" data-setting="storage">
+            <span class="settings-item-icon">▦</span>
+            <span><strong>Storage and data</strong><small>Media and data usage</small></span>
+            <span>›</span>
+          </button>
+
+          <button class="settings-item" data-setting="language">
+            <span class="settings-item-icon">文</span>
+            <span><strong>Language</strong><small>Application language</small></span>
+            <span>›</span>
+          </button>
+
+          <button class="settings-item" data-setting="help">
+            <span class="settings-item-icon">?</span>
+            <span><strong>Help</strong><small>Support and information</small></span>
+            <span>›</span>
+          </button>
+
+          <button class="settings-item" data-setting="about">
+            <span class="settings-item-icon">ⓘ</span>
+            <span><strong>About ZORAP</strong><small>Version and application details</small></span>
+            <span>›</span>
+          </button>
+        </div>
+
+        <button class="danger-button" id="logoutBtn">Log out</button>
+      </section>
+
+    </main>
+
+    <!-- MOBILE NAVIGATION -->
+    <nav class="bottom-navigation">
       <button class="nav-item active" data-page="chats">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.5-3A7.5 7.5 0 1 1 20 11.5Z"/>
-        </svg>
-        <span>Chats</span>
+        <span class="nav-symbol">▤</span>
+        <small>Chats</small>
       </button>
-
       <button class="nav-item" data-page="updates">
-        <svg viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9"/>
-          <circle cx="12" cy="12" r="5"/>
-          <circle cx="12" cy="12" r="1"/>
-        </svg>
-        <span>Updates</span>
+        <span class="nav-symbol">◉</span>
+        <small>Updates</small>
       </button>
-
       <button class="nav-item" data-page="groups">
-        <svg viewBox="0 0 24 24" fill="none">
-          <circle cx="9" cy="8" r="3"/>
-          <circle cx="17" cy="9" r="2.5"/>
-          <path d="M3 20c0-3.5 2.5-5.5 6-5.5s6 2 6 5.5"/>
-          <path d="M15 15c3.5-.3 6 1.5 6 4"/>
-        </svg>
-        <span>Groups</span>
+        <span class="nav-symbol">▧</span>
+        <small>Groups</small>
       </button>
-
-      <button class="nav-item" data-page="calls">
-        <svg viewBox="0 0 24 24" fill="none">
-          <path d="M7 3h3l2 5-2 2a14 14 0 0 0 4 4l2-2 5 2v3c0 1.1-.9 2-2 2C10 19 5 14 5 5c0-1.1.9-2 2-2Z"/>
-        </svg>
-        <span>Calls</span>
+      <button class="nav-item" data-page="contacts">
+        <span class="nav-symbol">♙</span>
+        <small>Contacts</small>
       </button>
-
       <button class="nav-item" data-page="settings">
-        <svg viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19 13.5a7 7 0 0 0 0-3l2-1.5-2-3.5-2.5 1a8 8 0 0 0-2.5-1.5L13.5 2h-4L9 5a8 8 0 0 0-2.5 1.5L4 5.5 2 9l2 1.5a7 7 0 0 0 0 3L2 15l2 3.5 2.5-1A8 8 0 0 0 9 19l.5 3h4l.5-3a8 8 0 0 0 2.5-1.5l2.5 1 2-3.5Z"/>
-        </svg>
-        <span>Settings</span>
+        <span class="nav-symbol">⚙</span>
+        <small>Settings</small>
       </button>
-
     </nav>
 
-    <div class="sidebar-bottom">
-      <div class="connection-indicator">
-        <span class="connection-dot"></span>
-        <span>ZORAP CONNECTED</span>
-      </div>
-      <span class="version-label">ZORAP WEB · 1.0</span>
-    </div>
-
-  </aside>
-
-
-  <!-- MAIN CONTENT -->
-
-  <main class="main-content">
-
-    <!-- TOPBAR -->
-
-    <header class="topbar">
-      <div>
-        <div class="topbar-eyebrow">YOUR PERSONAL SPACE</div>
-        <h1 id="pageTitle">Chats</h1>
-      </div>
-
-      <div class="topbar-actions">
-
-        <button id="globalSearchBtn" class="icon-btn" aria-label="Cari">
-          <svg viewBox="0 0 24 24" fill="none">
-            <circle cx="11" cy="11" r="7"/>
-            <path d="m16 16 4 4"/>
-          </svg>
-        </button>
-
-        <button id="themeToggle" class="icon-btn" aria-label="Ganti tema">
-          <svg id="themeIcon" viewBox="0 0 24 24" fill="none">
-            <path d="M20 15.5A8 8 0 0 1 8.5 4 8 8 0 1 0 20 15.5Z"/>
-          </svg>
-        </button>
-
-        <button id="newChatBtn" class="primary-btn">
-          <span>+</span> New chat
-        </button>
-
-      </div>
-    </header>
-
-
-    <!-- =================================
-         CHATS PAGE
-    ================================== -->
-
-    <section id="welcomePanel" class="page-content">
-
-      <div class="section-heading">
-        <div>
-          <h2>Messages</h2>
-          <p>Semua percakapan kamu ada di sini.</p>
-        </div>
-
-        <button id="emptyNewChatBtn" class="secondary-btn">
-          + Mulai chat
-        </button>
-      </div>
-
-      <div class="chat-layout">
-
-        <div class="chat-list-panel">
-
-          <div class="list-heading">
-            <span>ALL MESSAGES</span>
-            <span id="chatCount">0</span>
-          </div>
-
-          <div id="chatList" class="chat-list">
-
-            <div class="empty-state">
-              <div class="empty-state-icon">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.5-3A7.5 7.5 0 1 1 20 11.5Z"/>
-                </svg>
-              </div>
-              <h3>Belum ada percakapan</h3>
-              <p>Mulai percakapan dengan temanmu.</p>
-              <button id="welcomeNewChatBtn" class="primary-btn">
-                Mulai percakapan
-              </button>
-            </div>
-
-          </div>
-
-        </div>
-
-
-        <!-- CHAT VIEW -->
-
-        <section id="chatView" class="chat-view hidden">
-
-          <header id="conversationHeader" class="conversation-header">
-
-            <button id="mobileBackBtn" class="icon-btn" aria-label="Kembali">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="m15 18-6-6 6-6"/>
-              </svg>
-            </button>
-
-            <div class="conversation-user-info">
-              <div class="avatar">
-                <img id="conversationAvatar" src="" alt="">
-              </div>
-
-              <div>
-                <div class="name-line">
-                  <strong id="conversationName">Percakapan</strong>
-                  <span id="conversationVerified"></span>
-                </div>
-                <span id="conversationStatus">ZORAP</span>
-              </div>
-            </div>
-
-            <div class="conversation-actions">
-
-              <button id="chatSearchBtn" class="icon-btn" aria-label="Cari pesan">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <circle cx="11" cy="11" r="7"/>
-                  <path d="m16 16 4 4"/>
-                </svg>
-              </button>
-
-              <button id="conversationMenuBtn" class="icon-btn" aria-label="Menu chat">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <circle cx="5" cy="12" r="1.5"/>
-                  <circle cx="12" cy="12" r="1.5"/>
-                  <circle cx="19" cy="12" r="1.5"/>
-                </svg>
-              </button>
-
-            </div>
-
-          </header>
-
-
-          <div id="messageHistory" class="message-history">
-
-            <div class="message-empty">
-              <h3>Mulai percakapan</h3>
-              <p>Kirim pesan pertama kamu.</p>
-            </div>
-
-          </div>
-
-
-          <div id="typingIndicator" class="typing-indicator hidden">
-            <span></span>
-            <span></span>
-            <span></span>
-            <small>Sedang mengetik...</small>
-          </div>
-
-
-          <form id="messageForm" class="message-composer">
-
-            <button type="button" id="attachmentBtn" class="icon-btn" aria-label="Lampiran">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="m8 12 7-7a4 4 0 0 1 6 6l-9 9a6 6 0 0 1-9-9l9-9"/>
-              </svg>
-            </button>
-
-            <input
-              id="messageInput"
-              type="text"
-              placeholder="Tulis pesan..."
-              autocomplete="off"
-              maxlength="5000"
-            >
-
-            <button id="sendMessageBtn" type="submit" class="send-btn" aria-label="Kirim pesan">
-              <svg viewBox="0 0 24 24" fill="none">
-                <path d="m22 2-7 20-4-9-9-4Z"/>
-                <path d="M22 2 11 13"/>
-              </svg>
-            </button>
-
-          </form>
-
-        </section>
-
-      </div>
-
-    </section>
-
-
-    <!-- =================================
-         UPDATES PAGE
-    ================================== -->
-
-    <section id="updatesPage" class="page-content hidden">
-
-      <div class="section-heading">
-        <div>
-          <h2>Updates</h2>
-          <p>Bagikan momen bersama teman.</p>
-        </div>
-
-        <button id="createStatusBtn" class="primary-btn">
-          + Buat status
-        </button>
-      </div>
-
-      <div class="feature-card status-intro">
-        <div>
-          <span class="card-eyebrow">ZORAP UPDATES</span>
-          <h3>What's happening?</h3>
-          <p>Foto dan video status akan tersedia selama 24 jam.</p>
-        </div>
-      </div>
-
-      <div class="section-heading compact-heading">
-        <h3>Status terbaru</h3>
-      </div>
-
-      <div id="statusList" class="status-list"></div>
-
-    </section>
-
-
-    <!-- =================================
-         GROUPS PAGE
-    ================================== -->
-
-    <section id="groupsPage" class="page-content hidden">
-
-      <div class="section-heading">
-        <div>
-          <h2>Groups</h2>
-          <p>Ruang obrolan bersama teman-teman.</p>
-        </div>
-
-        <button id="createGroupBtn" class="primary-btn">
-          + Buat grup
-        </button>
-      </div>
-
-      <div class="feature-card">
-        <div>
-          <span class="card-eyebrow">COMMUNITIES</span>
-          <h3>Better conversations together.</h3>
-          <p>Buat grup dan mulai berkomunikasi bersama.</p>
-        </div>
-      </div>
-
-      <div class="section-heading compact-heading">
-        <h3>Grup kamu</h3>
-      </div>
-
-      <div id="groupsList" class="groups-list">
-
-        <div class="empty-state">
-          <h3>Belum ada grup</h3>
-          <p>Buat grup pertama kamu di ZORAP.</p>
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- =================================
-         CALLS PAGE
-    ================================== -->
-
-    <section id="callsPage" class="page-content hidden">
-
-      <div class="section-heading">
-        <div>
-          <h2>Calls</h2>
-          <p>Riwayat panggilan kamu.</p>
-        </div>
-      </div>
-
-      <div class="feature-card">
-        <span class="card-eyebrow">ZORAP CALLS</span>
-        <h3>Stay connected.</h3>
-        <p>Fitur panggilan suara dan video akan tersedia di sini.</p>
-      </div>
-
-      <div class="empty-state">
-        <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M7 3h3l2 5-2 2a14 14 0 0 0 4 4l2-2 5 2v3c0 1.1-.9 2-2 2C10 19 5 14 5 5c0-1.1.9-2 2-2Z"/>
-          </svg>
-        </div>
-        <h3>Belum ada panggilan</h3>
-        <p>Riwayat panggilan akan muncul di sini.</p>
-      </div>
-
-    </section>
-
-
-    <!-- =================================
-         SETTINGS PAGE
-    ================================== -->
-
-    <section id="settingsPage" class="page-content hidden">
-
-      <div class="section-heading">
-        <div>
-          <h2>Settings</h2>
-          <p>Atur pengalaman ZORAP kamu.</p>
-        </div>
-      </div>
-
-
-      <!-- PROFILE -->
-
-      <div class="settings-profile-card" id="settingsProfile">
-
-        <div class="settings-avatar">
-          <img id="settingsAvatar" src="" alt="">
-        </div>
-
-        <div>
-          <h3 id="settingsName">Nama pengguna</h3>
-          <p id="settingsUsername">@username</p>
-          <span class="profile-label">ZORAP ACCOUNT</span>
-        </div>
-
-        <button class="icon-btn" aria-label="Buka profil">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
-        </button>
-
-      </div>
-
-
-      <!-- SETTINGS GROUPS -->
-
-      <div class="settings-group">
-
-        <div class="settings-group-title">ACCOUNT</div>
-
-        <button class="setting-item" data-setting="account">
-          <span class="setting-icon">01</span>
-          <span>
-            <strong>Account</strong>
-            <small>Informasi dan keamanan akun</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-        <button class="setting-item" data-setting="privacy">
-          <span class="setting-icon">02</span>
-          <span>
-            <strong>Privacy</strong>
-            <small>Kontrol privasi dan aktivitas</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-        <button class="setting-item" data-setting="profile">
-          <span class="setting-icon">03</span>
-          <span>
-            <strong>Profile</strong>
-            <small>Nama, foto, dan username</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-      </div>
-
-
-      <div class="settings-group">
-
-        <div class="settings-group-title">PERSONALIZATION</div>
-
-        <button class="setting-item" data-setting="chats">
-          <span class="setting-icon">04</span>
-          <span>
-            <strong>Chats</strong>
-            <small>Pengaturan percakapan</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-        <button class="setting-item" data-setting="notifications">
-          <span class="setting-icon">05</span>
-          <span>
-            <strong>Notifications</strong>
-            <small>Notifikasi dan suara</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-        <button class="setting-item" data-setting="appearance">
-          <span class="setting-icon">06</span>
-          <span>
-            <strong>Appearance</strong>
-            <small>Tema dan tampilan aplikasi</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-        <button class="setting-item" data-setting="language">
-          <span class="setting-icon">07</span>
-          <span>
-            <strong>Language</strong>
-            <small>Bahasa aplikasi</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-      </div>
-
-
-      <div class="settings-group">
-
-        <div class="settings-group-title">INFORMATION</div>
-
-        <button class="setting-item" data-setting="storage">
-          <span class="setting-icon">08</span>
-          <span>
-            <strong>Storage and data</strong>
-            <small>Penyimpanan dan penggunaan data</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-        <button class="setting-item" data-setting="help">
-          <span class="setting-icon">09</span>
-          <span>
-            <strong>Help</strong>
-            <small>Pusat bantuan ZORAP</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-        <button class="setting-item" data-setting="about">
-          <span class="setting-icon">10</span>
-          <span>
-            <strong>About ZORAP</strong>
-            <small>Informasi aplikasi</small>
-          </span>
-          <span class="setting-arrow">›</span>
-        </button>
-
-      </div>
-
-
-      <button id="logoutBtn" class="logout-btn">
-        Log out
-      </button>
-
-      <div class="settings-footer">
-        ZORAP WEB · VERSION 1.0
-        <p>Connect beyond boundaries.</p>
-      </div>
-
-    </section>
-
-  </main>
-
-
-  <!-- MOBILE BOTTOM NAVIGATION -->
-
-  <nav class="bottom-navigation">
-
-    <button class="nav-item active" data-page="chats">
-      <svg viewBox="0 0 24 24" fill="none">
-        <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.5-3A7.5 7.5 0 1 1 20 11.5Z"/>
-      </svg>
-      <span>Chats</span>
-    </button>
-
-    <button class="nav-item" data-page="updates">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9"/>
-        <circle cx="12" cy="12" r="5"/>
-      </svg>
-      <span>Updates</span>
-    </button>
-
-    <button class="nav-item" data-page="groups">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="9" cy="8" r="3"/>
-        <circle cx="17" cy="9" r="2.5"/>
-        <path d="M3 20c0-3.5 2.5-5.5 6-5.5s6 2 6 5.5"/>
-      </svg>
-      <span>Groups</span>
-    </button>
-
-    <button class="nav-item" data-page="calls">
-      <svg viewBox="0 0 24 24" fill="none">
-        <path d="M7 3h3l2 5-2 2a14 14 0 0 0 4 4l2-2 5 2v3c0 1.1-.9 2-2 2C10 19 5 14 5 5c0-1.1.9-2 2-2Z"/>
-      </svg>
-      <span>Calls</span>
-    </button>
-
-    <button class="nav-item" data-page="settings">
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19 13.5a7 7 0 0 0 0-3l2-1.5-2-3.5-2.5 1a8 8 0 0 0-2.5-1.5L13.5 2h-4L9 5a8 8 0 0 0-2.5 1.5L4 5.5 2 9l2 1.5a7 7 0 0 0 0 3L2 15l2 3.5 2.5-1A8 8 0 0 0 9 19l.5 3h4l.5-3a8 8 0 0 0 2.5-1.5l2.5 1 2-3.5Z"/>
-      </svg>
-      <span>Settings</span>
-    </button>
-
-  </nav>
-
-</div>
-
-
-<!-- =================================
-     MODAL
-================================== -->
-
-<div id="modalOverlay" class="modal-overlay hidden">
-
-  <div id="modalContent" class="modal-content">
-    <button id="modalCloseBtn" class="modal-close" aria-label="Tutup">
-      ×
-    </button>
   </div>
 
-</div>
-
-
-<!-- =================================
-     TOAST
-================================== -->
-
-<div id="toastContainer" class="toast-container"></div>
-
-
-<!-- =================================
-     STATUS VIEWER
-================================== -->
-
-<div id="statusViewer" class="status-viewer hidden">
-
-  <div id="statusProgress" class="status-progress"></div>
-
-  <header class="status-viewer-header">
-
-    <div class="status-viewer-user">
-      <div id="statusViewerAvatar" class="avatar"></div>
-
-      <div>
-        <strong id="statusViewerName">Pengguna</strong>
-        <span id="statusViewerTime"></span>
-      </div>
+  <!-- GLOBAL MODAL -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal-content" id="modalContent">
+      <button class="modal-close" id="modalCloseBtn">×</button>
+      <div id="modalBody"></div>
     </div>
+  </div>
 
-    <div class="status-viewer-actions">
-      <button id="statusViewersBtn">Dilihat</button>
-      <button id="deleteStatusBtn" class="hidden">Hapus</button>
-      <button id="closeStatusViewer">×</button>
-    </div>
+  <!-- TOAST -->
+  <div class="toast-container" id="toastContainer"></div>
 
-  </header>
+  <!-- FILE INPUT -->
+  <input type="file" id="statusFileInput" accept="image/*,video/*" hidden>
+  <input type="file" id="chatFileInput" hidden>
 
-  <button id="statusPrevious" class="status-nav previous">‹</button>
-
-  <div id="statusMedia" class="status-media"></div>
-
-  <button id="statusNext" class="status-nav next">›</button>
-
-  <div id="statusCaption" class="status-caption"></div>
-
-</div>
-
-
-<!-- =================================
-     SCRIPTS
-================================== -->
-
-<script type="module" src="./js/app.js"></script>
-<script type="module" src="./js/chat.js"></script>
-<script type="module" src="./js/groups.js"></script>
-<script type="module" src="./js/status.js"></script>
-
+  <!-- APP MODULES -->
+  <script type="module">
+    import "./js/app.js";
+    import "./js/chat.js";
+    import "./js/groups.js";
+    import "./js/contacts.js";
+    import "./js/status.js";
+    import "./js/settings.js";
+  </script>
 </body>
 </html>
