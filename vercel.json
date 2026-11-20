@@ -4,5 +4,15 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/app",
+      "destination": "/app.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    }
+  ]
 }
