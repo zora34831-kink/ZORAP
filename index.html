@@ -4,221 +4,170 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#09090d">
-  <meta name="description" content="ZORAP - Private Messaging Experience">
-  <title>ZORAP</title>
+  <meta name="theme-color" content="#09090f">
+  <title>ZORAP — Sign in</title>
 
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./css/style.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 
-<body>
+<body class="auth-body">
 
-  <!-- SPLASH SCREEN -->
-  <section id="splash" class="splash">
-    <div class="splash-content">
-      <div class="zora-logo">Z</div>
-      <h1>ZORAP</h1>
-      <p>Connect without limits.</p>
+  <main class="auth-layout">
 
-      <div class="loading-line">
-        <span></span>
-      </div>
-    </div>
-  </section>
-
-  <!-- AUTH SCREEN -->
-  <main id="authScreen" class="auth-screen hidden">
-
-    <!-- HEADER -->
-    <header class="auth-top">
-
-      <div class="brand">
-        <div class="brand-logo">Z</div>
+    <section class="auth-brand">
+      <a href="./index.html" class="brand-logo">
+        <span class="brand-symbol">Z</span>
         <span>ZORAP</span>
-      </div>
+      </a>
 
-      <div class="header-actions">
-
-        <div class="secure-label">
-          <span class="secure-dot"></span>
-          Secure connection
-        </div>
-
-        <button
-          type="button"
-          id="themeToggle"
-          class="theme-toggle"
-          aria-label="Ganti tema"
-        >
-          <span id="themeIcon">☀</span>
-          <span id="themeText">Light mode</span>
-        </button>
-
-      </div>
-    </header>
-
-    <!-- AUTH CONTENT -->
-    <section class="auth-content">
-
-      <div class="auth-heading">
-        <span class="eyebrow">WELCOME TO ZORAP</span>
-
-        <h1 id="authTitle">
-          Selamat datang<br>
-          kembali.
-        </h1>
-
-        <p id="authDescription">
-          Masuk untuk melanjutkan percakapanmu.
+      <div class="brand-content">
+        <span class="eyebrow">YOUR SPACE. YOUR PEOPLE.</span>
+        <h1>Conversations<br>that bring us closer.</h1>
+        <p>
+          Stay connected with your people.
+          Share moments, create groups, and keep every conversation
+          in one place.
         </p>
       </div>
 
-      <!-- LOGIN FORM -->
-      <form id="loginForm" class="auth-form">
-
-        <label for="loginEmail">Email</label>
-
-        <input
-          id="loginEmail"
-          type="email"
-          placeholder="nama@email.com"
-          autocomplete="email"
-          required
-        >
-
-        <label for="loginPassword">Password</label>
-
-        <div class="password-wrap">
-
-          <input
-            id="loginPassword"
-            type="password"
-            placeholder="Masukkan password"
-            autocomplete="current-password"
-            required
-          >
-
-          <button type="button" id="togglePassword">
-            Lihat
-          </button>
-
-        </div>
-
-        <button
-          type="button"
-          id="forgotPassword"
-          class="forgot"
-        >
-          Lupa password?
-        </button>
-
-        <button
-          type="submit"
-          class="primary-btn"
-          id="loginButton"
-        >
-          <span>Masuk ke ZORAP</span>
-          <span>→</span>
-        </button>
-
-      </form>
-
-      <!-- REGISTER FORM -->
-      <form id="registerForm" class="auth-form hidden">
-
-        <label for="registerName">Nama pengguna</label>
-
-        <input
-          id="registerName"
-          type="text"
-          placeholder="Nama kamu"
-          maxlength="30"
-          autocomplete="name"
-          required
-        >
-
-        <label for="registerUsername">Username</label>
-
-        <input
-          id="registerUsername"
-          type="text"
-          placeholder="@username"
-          minlength="3"
-          maxlength="20"
-          autocomplete="username"
-          required
-        >
-
-        <label for="registerEmail">Email</label>
-
-        <input
-          id="registerEmail"
-          type="email"
-          placeholder="nama@email.com"
-          autocomplete="email"
-          required
-        >
-
-        <label for="registerPassword">Password</label>
-
-        <input
-          id="registerPassword"
-          type="password"
-          placeholder="Minimal 6 karakter"
-          minlength="6"
-          autocomplete="new-password"
-          required
-        >
-
-        <button
-          type="submit"
-          class="primary-btn"
-          id="registerButton"
-        >
-          <span>Buat akun</span>
-          <span>→</span>
-        </button>
-
-      </form>
-
-      <!-- SWITCH LOGIN / REGISTER -->
-      <div class="auth-switch">
-
-        <span id="switchText">
-          Belum punya akun?
-        </span>
-
-        <button
-          type="button"
-          id="switchAuth"
-        >
-          Daftar sekarang
-        </button>
-
+      <div class="brand-footer">
+        ZORAP APPLICATION STUDIO
+        <span>© 2026 ZORAP</span>
       </div>
-
-      <!-- AUTH NOTIFICATION -->
-      <div
-        id="authMessage"
-        class="auth-message hidden"
-        role="status"
-        aria-live="polite"
-      ></div>
-
     </section>
 
-    <!-- FOOTER -->
-    <footer class="auth-footer">
-      <span>© 2026 ZORAP</span>
-      <span>Mudah Bersama Kami</span>
-    </footer>
+    <section class="auth-panel">
+      <div class="auth-container">
+
+        <div class="mobile-brand">
+          <span class="brand-symbol">Z</span>
+          <span>ZORAP</span>
+        </div>
+
+        <div class="auth-heading">
+          <span class="eyebrow">WELCOME TO ZORAP</span>
+          <h2 id="authTitle">Welcome back</h2>
+          <p id="authDescription">Sign in to continue your conversations.</p>
+        </div>
+
+        <div class="auth-tabs" id="authTabs">
+          <button class="auth-tab active" data-mode="login" type="button">
+            Sign in
+          </button>
+          <button class="auth-tab" data-mode="register" type="button">
+            Create account
+          </button>
+        </div>
+
+        <form id="authForm">
+
+          <div class="form-field" id="nameField" hidden>
+            <label for="authName">Full name</label>
+            <input
+              id="authName"
+              type="text"
+              placeholder="Your name"
+              autocomplete="name"
+            >
+          </div>
+
+          <div class="form-field" id="usernameField" hidden>
+            <label for="authUsername">Username</label>
+            <input
+              id="authUsername"
+              type="text"
+              placeholder="username"
+              autocomplete="username"
+            >
+          </div>
+
+          <div class="form-field">
+            <label for="authEmail">Email address</label>
+            <input
+              id="authEmail"
+              type="email"
+              placeholder="name@example.com"
+              autocomplete="email"
+              required
+            >
+          </div>
+
+          <div class="form-field">
+            <div class="label-row">
+              <label for="authPassword">Password</label>
+              <button type="button" id="forgotPassword">
+                Forgot password?
+              </button>
+            </div>
+
+            <div class="password-wrap">
+              <input
+                id="authPassword"
+                type="password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                required
+              >
+              <button type="button" id="togglePassword" aria-label="Show password">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-field" id="confirmPasswordField" hidden>
+            <label for="authConfirmPassword">Confirm password</label>
+            <input
+              id="authConfirmPassword"
+              type="password"
+              placeholder="Repeat your password"
+              autocomplete="new-password"
+            >
+          </div>
+
+          <div id="authError" class="auth-message error" hidden></div>
+          <div id="authSuccess" class="auth-message success" hidden></div>
+
+          <button class="auth-submit" id="authSubmit" type="submit">
+            <span id="authSubmitText">Sign in</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+          </button>
+
+        </form>
+
+        <div class="auth-divider">
+          <span>SECURE CONNECTION</span>
+        </div>
+
+        <p class="auth-terms">
+          By continuing, you agree to use ZORAP responsibly.
+        </p>
+
+      </div>
+    </section>
 
   </main>
 
-  <!-- FIREBASE AUTH -->
-  <div id="recaptcha-container"></div>
+  <div id="authToast" class="auth-toast"></div>
 
-  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="./js/auth.js"></script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(console.error);
+      });
+    }
+  </script>
 
 </body>
 </html>
